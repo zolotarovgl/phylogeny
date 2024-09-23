@@ -6,6 +6,7 @@ import argparse
 import logging
 import yaml
 from helper.s01_search import search
+from helper.s02_cluster import cluster
 
 # Ensure PyYAML is installed
 try:
@@ -25,10 +26,22 @@ def load_config():
     return config
 
 
+def check(tool_name):
+    try:
+        # Try to run the tool with a harmless argument like --help
+        result = subprocess.run([tool_name, '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        # If return code is 0, it means the tool executed successfully
+        if result.returncode == 0:
+            print(f"{tool_name} is available and can be launched.")
+        else:
+            print(f"Error: {tool_name} is not functioning properly.")
+            sys.exit(1)
+    except FileNotFoundError:
+        print(f"Error: {tool_name} is not available on your system.")
+        sys.exit(1)
 
-def cluster(fasta_file, gene_family_info):
-    logging.info(f"Clustering sequences for fasta file: {fasta_file} with gene_family_info: {gene_family_info}")
-    pass
+# Pipeline # 
 
 def phylogeny(hg_id):
     logging.info(f"Running phylogeny for homology group: {hg_id}")
@@ -53,7 +66,9 @@ if __name__ == "__main__":
 
     parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
     parser_cluster.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
-    parser_cluster.add_argument('-g', '--gene_family_info', required=True, help='Path to the gene family info file specifying HMMs and parameters')
+    parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
+    parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
+    parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
 
     parser_phylogeny = subparsers.add_parser('phylogeny', help='Run phylogeny')
     parser_phylogeny.add_argument('hg_id', help='ID of the homology group')
@@ -80,7 +95,9 @@ if __name__ == "__main__":
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
-        cluster(args.fasta, args.gene_family_info)
+        check('diamond')
+        check('mcl')
+        cluster(fasta_file = args.fasta, output_file = args.outfile ,inflation = args.inflation, ncpu = args.ncpu)
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
