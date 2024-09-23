@@ -41,4 +41,5 @@ def cluster(fasta_file, output_file, inflation, ncpu = 5, max_target_seqs = 30, 
         cmd = f"rm {output_abc}; rm {output_csv}"
         logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
+    logging.info(f"Clustering done: {output_file}")
     

@@ -7,6 +7,8 @@ import logging
 import yaml
 from helper.s01_search import search
 from helper.s02_cluster import cluster
+#from helper.s03_align import align, trim, align_and_trim 
+from helper.s03_align import align_and_trim
 
 # Ensure PyYAML is installed
 try:
@@ -29,8 +31,8 @@ def load_config():
 def check(tool_name):
     try:
         # Try to run the tool with a harmless argument like --help
-        result = subprocess.run([tool_name, '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
+        cmd = [tool_name, '--help']
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # If return code is 0, it means the tool executed successfully
         if result.returncode == 0:
             print(f"{tool_name} is available and can be launched.")
@@ -64,12 +66,20 @@ if __name__ == "__main__":
     parser_search.add_argument('-g', '--gene_family_info', required=True, help='Path to the gene family info file specifying HMMs and parameters')
     parser_search.add_argument('gene_family_name', help='Name of the gene family to search')
 
+    # Cluster
     parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
     parser_cluster.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
     parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
     parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
     parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
 
+    # Alignment
+    parser_cluster = subparsers.add_parser('align', help='Run alignment')
+    parser_cluster.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
+    parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
+    parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
+    
+    # Phylogeny
     parser_phylogeny = subparsers.add_parser('phylogeny', help='Run phylogeny')
     parser_phylogeny.add_argument('hg_id', help='ID of the homology group')
 
@@ -98,6 +108,12 @@ if __name__ == "__main__":
         check('diamond')
         check('mcl')
         cluster(fasta_file = args.fasta, output_file = args.outfile ,inflation = args.inflation, ncpu = args.ncpu)
+
+    elif args.command == 'align':
+        logging.info("Command: Align")
+        #check('mafft')
+        check('clipkit')
+        align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu)
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
