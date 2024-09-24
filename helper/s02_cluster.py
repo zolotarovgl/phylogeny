@@ -10,7 +10,7 @@ import yaml
 # Output: cluster assignments 
 
 
-def cluster(fasta_file, output_file, inflation, ncpu = 5, max_target_seqs = 30, clean = True):
+def cluster(fasta_file, output_file, inflation, ncpu = 5, max_target_seqs = 100, clean = True):
     if not os.path.exists(fasta_file):
         logging.error(f"{fasta_file} doesn't exist")
         sys.exit(1)

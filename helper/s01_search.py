@@ -126,8 +126,8 @@ def parse_gene_family_info(gene_family_info):
 def search(fasta_file, gene_family_info, gene_family_name, config, verbose):
     logging.info(f"# {fasta_file}: {gene_family_name} | HMM search")
     gene_families = parse_gene_family_info(gene_family_info)
-    if verbose: 
-        print(gene_families)
+   # if verbose: 
+        #print(gene_families)
     if gene_family_name not in gene_families:
         logging.error(f"Gene family {gene_family_name} not found in gene family info file.")
         return
