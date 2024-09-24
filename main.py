@@ -7,8 +7,8 @@ import logging
 import yaml
 from helper.s01_search import search
 from helper.s02_cluster import cluster
-#from helper.s03_align import align, trim, align_and_trim 
-from helper.s03_align import align_and_trim
+from helper.functions import align_and_trim
+from helper.functions import phylogeny
 
 # Ensure PyYAML is installed
 try:
@@ -45,12 +45,9 @@ def check(tool_name):
 
 # Pipeline # 
 
-def phylogeny(hg_id):
-    logging.info(f"Running phylogeny for homology group: {hg_id}")
-    pass
-
 def run_generax(hg_id):
     logging.info(f"Running GeneRax for homology group: {hg_id}")
+    raise(NotImplementedError())
     pass
 
 def run_possvm(hg_id):
@@ -61,30 +58,36 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phylogeny tool")
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
 
+    # Search 
     parser_search = subparsers.add_parser('search', help='Search for a family using HMMER')
-    parser_search.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
+    parser_search.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_search.add_argument('-g', '--gene_family_info', required=True, help='Path to the gene family info file specifying HMMs and parameters')
     parser_search.add_argument('gene_family_name', help='Name of the gene family to search')
 
     # Cluster
     parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
-    parser_cluster.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
+    parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
     parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
     parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
 
     # Alignment
     parser_cluster = subparsers.add_parser('align', help='Run alignment')
-    parser_cluster.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
+    parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
     parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
     
     # Phylogeny
-    parser_phylogeny = subparsers.add_parser('phylogeny', help='Run phylogeny')
-    parser_phylogeny.add_argument('hg_id', help='ID of the homology group')
+    parser_phylogeny = subparsers.add_parser('phylogeny', help='Run IQTREE2 for an alignment in --fasta')
+    parser_phylogeny.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
+    parser_phylogeny.add_argument('-o', '--outprefix', required=True, help='Output prefix for IQTREE2 files')
+    parser_phylogeny.add_argument('-c', '--ncpu', required=True,  help='Number of CPU cores to use')
 
+    # GeneRax
     parser_generax = subparsers.add_parser('generax', help='Run GeneRax')
-    parser_generax.add_argument('hg_id', help='ID of the homology group')
+    parser_generax.add_argument('-t','--tree', required = True, help='Species tree')
+    parser_generax.add_argument('-f','--fasta', required = True, help='Alignment file')
+    parser_generax.add_argument('-o','--outdir', required = True, help='Output folder')
 
     parser_possvm = subparsers.add_parser('possvm', help='Run POSSVM')
     parser_possvm.add_argument('hg_id', help='ID of the homology group')
@@ -117,11 +120,13 @@ if __name__ == "__main__":
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
-        phylogeny(args.hg_id)
+        check("iqtree2")
+        phylogeny(fasta_file = args.fasta, output_prefix = args.outprefix,ntmax = args.ncpu)
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")
-        run_generax(args.hg_id)
+        raise(NotImplementedError())
+        #run_generax()
 
     elif args.command == 'possvm':
         logging.info("Command: POSSVM")
