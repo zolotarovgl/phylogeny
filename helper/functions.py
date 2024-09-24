@@ -7,6 +7,13 @@ import logging
 import yaml
 
 
+
+
+
+
+
+
+#### Toool functions #####
 def align(fasta_file, output_file, ncpu, mafft_opt):
 
     logging.info(f"Aligning sequences with mafft")
