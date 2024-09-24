@@ -53,9 +53,10 @@ def run_generax(hg_id):
 def run_possvm(hg_id):
     logging.info(f"Running POSSVM for homology group: {hg_id}")
     pass
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Phylogeny tool")
+    parser = argparse.ArgumentParser(description="""
+    Python wrapper around some useful commands
+    """)
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
 
     # Search 
@@ -116,7 +117,7 @@ if __name__ == "__main__":
         logging.info("Command: Align")
         #check('mafft')
         check('clipkit')
-        align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu)
+        align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = "--maxiterate 1000 --genafpair")
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
