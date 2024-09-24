@@ -79,6 +79,7 @@ if __name__ == "__main__":
     parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
     parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
+    parser_cluster.add_argument('-m', '--mafft', required=False, default ="--maxiterate 1000 --genafpair", help='Mafft alignment options. Default  --maxiterate 1000 --genafpair')
     
     # Phylogeny
     parser_phylogeny = subparsers.add_parser('phylogeny', help='Run IQTREE2 for an alignment in --fasta')
@@ -119,7 +120,7 @@ if __name__ == "__main__":
         logging.info("Command: Align")
         #check('mafft')
         check('clipkit')
-        align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = "--maxiterate 1000 --genafpair")
+        align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft)
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
