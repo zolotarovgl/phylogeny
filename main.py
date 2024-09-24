@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def load_config():
     config_file = "config.yaml"
     tool_directory = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(tool_directory, config_path)
+    config_path = os.path.join(tool_directory, config_file)
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Configuration file {config_path} not found.")
     with open(config_path, 'r') as file:
