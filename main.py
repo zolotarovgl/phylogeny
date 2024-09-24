@@ -21,9 +21,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def load_config():
     config_file = "config.yaml"
-    if not os.path.exists(config_file):
-        raise FileNotFoundError(f"Configuration file {config_file} not found.")
-    with open(config_file, 'r') as file:
+    tool_directory = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(tool_directory, config_path)
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Configuration file {config_path} not found.")
+    with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
 
