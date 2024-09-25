@@ -2,6 +2,10 @@
 - mmseqs2 clustering  
 - easy-phylo: implement intermediate file checks   
 
+Installation:
+```bash
+git clone --recurse-submodules https://github.com/zolotarovgl/phylogeny.git
+```
 
 Examples: 
 ```bash
