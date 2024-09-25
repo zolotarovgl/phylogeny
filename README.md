@@ -1,5 +1,7 @@
 - make the search outputs obvious from the command line name  
 - mmseqs2 clustering  
+- easy-phylo: implement intermediate file checks   
+
 
 Examples: 
 ```bash

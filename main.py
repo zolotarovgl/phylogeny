@@ -10,6 +10,7 @@ from helper.s02_cluster import cluster
 from helper.functions import align_and_trim
 from helper.functions import phylogeny
 from helper.functions import possvm
+
 # Ensure PyYAML is installed
 try:
     import yaml
@@ -45,16 +46,32 @@ def check(tool_name):
         print(f"Error: {tool_name} is not available on your system.")
         sys.exit(1)
 
-# Pipeline # 
+
+
+#############################################################################################
+
+
+def run_easyphylo(fasta_file,ncpu):
+    logging.info(f"Easy-phylo: {fasta_file}")
+    quit()
+
+
+
+
+
+
+
+
+
+#############################################################################################
+
+# Pipelines # 
 
 def run_generax(hg_id):
     logging.info(f"Running GeneRax for homology group: {hg_id}")
     raise(NotImplementedError())
     pass
 
-def run_possvm(hg_id):
-    logging.info(f"Running POSSVM for homology group: {hg_id}")
-    pass
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""
     Python wrapper around some useful commands
@@ -75,11 +92,11 @@ if __name__ == "__main__":
     parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
 
     # Alignment
-    parser_cluster = subparsers.add_parser('align', help='Run alignment')
-    parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
-    parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
-    parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
-    parser_cluster.add_argument('-m', '--mafft', required=False, default ="--maxiterate 1000 --genafpair", help='Mafft alignment options. Default  --maxiterate 1000 --genafpair')
+    parser_align = subparsers.add_parser('align', help='Run alignment')
+    parser_align.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
+    parser_align.add_argument('-o', '--outfile', required=True, help='Output file')
+    parser_align.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
+    parser_align.add_argument('-m', '--mafft', required=False, default ="--maxiterate 1000 --genafpair", help='Mafft alignment options. Default  --maxiterate 1000 --genafpair')
     
     # Phylogeny
     parser_phylogeny = subparsers.add_parser('phylogeny', help='Run IQTREE2 for an alignment in --fasta')
@@ -97,6 +114,15 @@ if __name__ == "__main__":
     parser_possvm = subparsers.add_parser('possvm', help='Run POSSVM')
     parser_possvm.add_argument('-t','--treefile', required = True, help='ID of the homology group')
     parser_possvm.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name')
+    
+
+    # EASY-PHYLO
+    parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
+    parser_easyphylo.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
+    parser_easyphylo.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use')
+    parser_easyphylo.add_argument('-m', '--mafft', required=False, default ="--maxiterate 1000 --genafpair", help='Mafft alignment options. Default  --maxiterate 1000 --genafpair')
+    parser_easyphylo.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name')
+
 
     args = parser.parse_args()
 
@@ -135,5 +161,20 @@ if __name__ == "__main__":
         #run_generax()
 
     elif args.command == 'possvm':
+        if not os.path.exists('possvm-orthology/possvm.py'):
+            logging.error("Can't find possvm-orthology/possvm.py! Exiting ...")
         possvm(treefile  = args.treefile,reference_names = args.refnames)
+
+    elif args.command == 'easy-phylo':
+        logging.info('Easy-phylo')
+        fname_aln = os.path.splitext(args.fasta)[0] + '.aln'
+        tree_prefix = os.path.splitext(args.fasta)[0] + '.tree'
+        fname_tree = tree_prefix + ".treefile"
+        print(fname_aln)
+        print(args.fasta)
+
+        align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = "")
+        phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu)
+        possvm(treefile = fname_tree,reference_names = args.refnames)
+        quit()
 
