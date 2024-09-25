@@ -9,7 +9,7 @@ from helper.s01_search import search
 from helper.s02_cluster import cluster
 from helper.functions import align_and_trim
 from helper.functions import phylogeny
-
+from helper.functions import possvm
 # Ensure PyYAML is installed
 try:
     import yaml
@@ -93,8 +93,10 @@ if __name__ == "__main__":
     parser_generax.add_argument('-f','--fasta', required = True, help='Alignment file')
     parser_generax.add_argument('-o','--outdir', required = True, help='Output folder')
 
+    # POSSVM
     parser_possvm = subparsers.add_parser('possvm', help='Run POSSVM')
-    parser_possvm.add_argument('hg_id', help='ID of the homology group')
+    parser_possvm.add_argument('-t','--treefile', required = True, help='ID of the homology group')
+    parser_possvm.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name')
 
     args = parser.parse_args()
 
@@ -133,6 +135,5 @@ if __name__ == "__main__":
         #run_generax()
 
     elif args.command == 'possvm':
-        logging.info("Command: POSSVM")
-        run_possvm(args.hg_id)
+        possvm(treefile  = args.treefile,reference_names = args.refnames)
 
