@@ -45,12 +45,12 @@ def phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000,
     subprocess.run(cmd, shell=True, check=True)
 
 
-def possvm(treefile,output_prefix = None,reference_names = None):
+def possvm(treefile,output_prefix = None,reference_names = None, possvm = 'submodules/possvm-orthology/possvm.py'):
     logging.info(f"Possvm: {treefile}")
     if reference_names:
         reference_names = f"-r {reference_names}"
     else:
         reference_names = ""
-    cmd = f"python possvm-orthology/possvm.py -skipprint -method lpa -itermidroot 10 -i {treefile} {reference_names}"
+    cmd = f"python {possvm} -skipprint -method lpa -itermidroot 10 -i {treefile} {reference_names}"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)

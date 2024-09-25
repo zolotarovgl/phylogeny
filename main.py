@@ -161,8 +161,8 @@ if __name__ == "__main__":
         #run_generax()
 
     elif args.command == 'possvm':
-        if not os.path.exists('possvm-orthology/possvm.py'):
-            logging.error("Can't find possvm-orthology/possvm.py! Exiting ...")
+        if not os.path.exists('submodules/possvm-orthology/possvm.py'):
+            logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
         possvm(treefile  = args.treefile,reference_names = args.refnames)
 
     elif args.command == 'easy-phylo':
