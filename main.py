@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     # PHYLO-SEARCH
     parser_phylosearch = subparsers.add_parser('phylo-search',
-            help = 'Annotate using phylogeny',
+            help = 'Search query sequences in proteomes and annotate using phylogenies',
             description="""
     Annotate the proteins based on blastp search and focused phylogenies:
 
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     parser_phylosearch.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
     parser_phylosearch.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_phylosearch.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
-    parser_phylosearch.add_argument('--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
+    parser_phylosearch.add_argument('-T','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
     
 
     args = parser.parse_args()
@@ -260,7 +260,7 @@ if __name__ == "__main__":
             cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir)
 
         # Cluster filtering
-        min_n = 0
+        min_n = 3
         query_ids_file = temp_dir + "/query.ids" 
         functions.get_fasta_names(fasta_file = query,out_file = query_ids_file)
         #functions.filter_clusters(cluster_file = cluster_file )
@@ -293,25 +293,42 @@ if __name__ == "__main__":
         clusters_renamed = {}
         for i,(k,v) in enumerate(clusters.items()):
             clusters_renamed.update({"c"+str(i):v})
-        print(clusters_renamed)
 
-        # this file handling takes sooooooo much time .... 
-        # finally, get their sequences 
-        # an rename? why am I wasting my time like this?
+        # For each cluster, create a separate file 
+        output_directory = 'results/clusters'
+        os.makedirs(output_directory, exist_ok=True)
+        logging.info(f'Created output directory: {output_directory}')
+        
+        for cl_id in clusters_renamed.keys():
+            fasta_file = joint_fasta_fname
+            ids_to_keep = clusters_renamed[cl_id]  # Replace with your list of IDs
+            cluster_fasta = output_directory + "/" + cl_id +  ".fasta"
+            functions.retrive_sequences(joint_fasta_fname, cluster_fasta, ids_to_keep)
 
 
-        from pyfaidx import Fasta
+# CAVE: replace with easy-phylo call? 
+        # Cluster alignment and phylogeny 
+        for cl_id in clusters_renamed.keys():
+            cluster_fasta = output_directory + "/" + cl_id +  ".fasta"
 
-        def filter_fasta(input_fasta, output_fasta, ids_to_keep):
-            fasta = Fasta(input_fasta)
-            with open(output_fasta, "w") as outfile:
-                for seq_id in ids_to_keep:
-                    if seq_id in fasta:
-                        outfile.write(f">{seq_id}\n{fasta[seq_id][:]}\n")
+            fname_aln = os.path.splitext(cluster_fasta)[0] + '.aln'
+            tree_prefix = os.path.splitext(cluster_fasta)[0] + '.tree'
+            fname_tree = tree_prefix + ".treefile"
+            force = False
 
-        # Usage example
-        cl_id = 'c0'
-        fasta_file = joint_fasta_fname
-        ids_to_keep = clusters_renamed[cl_id]  # Replace with your list of IDs
-        output_fasta = "suka.c0.fasta"
-        filter_fasta(fasta_file, output_fasta, ids_to_keep)
+            if os.path.isfile(fname_aln) and not force:
+                print(f'Found alignment file: {fname_aln}! Skipping alignment')
+            else:
+                align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = "")
+            if os.path.isfile(fname_tree) and not force:
+                print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
+            else:
+                phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu)
+            possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = prefix + "." + cl_id + ".")
+        # concatenate annotation files 
+        os.makedirs('results',exist_ok = True)
+        anno_files = [os.path.join(output_directory, file) for file in os.listdir(output_directory) if 'ortholog_groups.csv' in file]
+        cmd = 'cat %s > results/%s.annotation.tsv' % (" ".join(anno_files),prefix)
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+         

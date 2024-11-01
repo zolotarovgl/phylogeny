@@ -38,7 +38,7 @@ def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode =
         logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
 
-def phylogeny(fasta_file, output_prefix, cptime = 5000, nstop = 50, nm = 500, ntmax = 15, bb = 500, quiet = "",iqtree2 = "iqtree2"):
+def phylogeny(fasta_file, output_prefix, cptime = 5000, nstop = 50, nm = 500, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2"):
     # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
     logging.info(f"Phylogeny: {fasta_file} {output_prefix}")
     cmd = f"{iqtree2} -s {fasta_file} -m TEST -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -pre {output_prefix} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo"
@@ -56,7 +56,7 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
         reference_names = f"-r {reference_names}"
     else:
         reference_names = ""
-    cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot 10 -i {treefile} {reference_names}"
+    cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot 10 -i {treefile} {reference_names} > /dev/null 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
@@ -88,6 +88,15 @@ def check_tempdir(dirpath):
     else:
         print(f'Error: {dirpath} already exists. Delete it or set a different one!')
         quit()
+
+
+from Bio import SeqIO
+def retrive_sequences(input_fasta,output_fasta,ids_to_keep):
+    with open(output_fasta, "w") as outfile:
+         for record in SeqIO.parse(input_fasta, "fasta"):
+            if record.id in ids_to_keep:
+                SeqIO.write(record, outfile, "fasta")
+
 
 def filter_clusters(cluster_file,fasta_file,query_ids_file,soi = None):
     # fasta_file should contain all the sequences 

@@ -17,4 +17,8 @@ mkdir -p results_annotation/alignments
 python main.py align -f results_annotation/searches/myo.Myosin.domains.fasta -o results_annotation/alignments/test.aln -c 10
 mkdir -p results_annotation/gene_trees
 python main.py phylogeny -f results_annotation/alignments/test.aln -o results_annotation/gene_trees/test -c 15
+
+
+# search the proteomes and annotate the hits
+python main.py phylo-search --query example/rho_cdc42.fasta --target example/Mlei.fasta -c 15 -p dummy
 ```
