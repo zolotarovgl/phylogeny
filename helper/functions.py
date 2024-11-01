@@ -59,3 +59,45 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
     cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot 10 -i {treefile} {reference_names}"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
+
+# Phylo-search functions 
+
+def blastp(query,target,db,outfile,ncpu=1,outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore"):
+    cmd = f"makeblastdb -in {target} -dbtype prot -out {db} > /dev/null 2>&1"
+    logging.info(cmd)
+    subprocess.run(cmd, shell=True, check=True)
+    cmd = f'blastp -query {query} -out {outfile} -db {db} -evalue 1e-5 -num_threads {ncpu} -outfmt "{outfmt}" > /dev/null 2>&1'
+    #blastp -evalue 1e-5 -num_threads $NCPU -query $QUERY -db tmp/target -out search/${PREF}.blastp.tsv -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore"
+    logging.info(cmd)
+    subprocess.run(cmd, shell=True, check=True)
+
+def cluster(fasta_file,out_prefix,temp_dir):
+    cmd = f"mmseqs easy-cluster {fasta_file} {out_prefix} {temp_dir} --cluster-reassign > /dev/null 2>&1"
+    logging.info(cmd)
+    subprocess.run(cmd, shell=True, check=True)
+
+def get_fasta_names(fasta_file,out_file):
+    cmd = f"grep '>' {fasta_file} | sed 's/>//g' | sort | uniq > {out_file}"
+    logging.info(cmd)
+    subprocess.run(cmd, shell=True, check=True)
+
+
+def check_tempdir(dirpath):
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)
+    else:
+        print(f'Error: {dirpath} already exists. Delete it or set a different one!')
+        quit()
+
+def filter_clusters(cluster_file,fasta_file,query_ids_file,soi = None):
+    # fasta_file should contain all the sequences 
+
+    # Filtering :
+    # The clusters should contain: the SOI and the query sequences
+    logging.info('Filtering clusters:')
+    print(cluster_file)
+    print(fasta_file)
+    print(query_ids_file)
+    print(soi)
+
+    print('filtering done')

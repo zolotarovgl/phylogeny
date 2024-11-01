@@ -10,6 +10,10 @@ from helper.s02_cluster import cluster
 from helper.functions import align_and_trim
 from helper.functions import phylogeny
 from helper.functions import possvm
+from helper.functions import blastp
+from helper.functions import cluster
+
+from helper import functions
 
 # Ensure PyYAML is installed
 try:
@@ -128,6 +132,7 @@ if __name__ == "__main__":
 
     # PHYLO-SEARCH
     parser_phylosearch = subparsers.add_parser('phylo-search',
+            help = 'Annotate using phylogeny',
             description="""
     Annotate the proteins based on blastp search and focused phylogenies:
 
@@ -145,10 +150,11 @@ if __name__ == "__main__":
     parser_phylosearch.add_argument('--target', required=True, help='Target fasta file - usually a collection of proteomes')
     parser_phylosearch.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use.')
     parser_phylosearch.add_argument('-p','--prefix', default = None, required = True, help='Prefix to use for all files and orthogroups.')
-    parser_phylosearch.add_argument('-s','--soi', default = None, required = False, help='Prefix of the species of interest - e.g. "Mlei"')
+    parser_phylosearch.add_argument('-s','--soi', default = "", required = False, help='Prefix of the species of interest - e.g. "Mlei"')
     parser_phylosearch.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
     parser_phylosearch.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_phylosearch.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
+    parser_phylosearch.add_argument('--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
     
 
     args = parser.parse_args()
@@ -210,3 +216,102 @@ if __name__ == "__main__":
         possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix)
         print('Easy-phylo done!')
 
+    elif args.command == 'phylo-search':
+        logging.info(f"Phylo-search\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\n Prefix: {args.prefix}\n Species of interest: {args.soi}\n Mafft: {args.mafft}\n Reference names: {args.refnames}")
+        
+        
+        query = args.query
+        target = args.target
+        temp_dir = args.temp_dir
+        prefix = args.prefix
+        soi = args.soi
+
+        # check the temporary directory status:
+        force = False
+        if force:
+            functions.check_tempdir(args.temp_dir)
+        
+        blastp_outfile = temp_dir + "/blastp_result.tsv"
+        cluster_file = temp_dir + '/' + prefix + '_cluster.tsv'
+        
+        if not os.path.isfile(blastp_outfile):
+            logging.info(f'Phylo-sarch:BLASTP:\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\nOutput{blastp_outfile}')
+            blastp(query = args.query, target = args.target,db = args.temp_dir + "/target", outfile = blastp_outfile,ncpu = args.ncpu)
+        else:
+            logging.info(f'Found blatp output file {blastp_outfile}. Skipping')
+
+        # Gather the results and prepare for clustering 
+        joint_fasta_fname = temp_dir + "/" + prefix + ".fasta"
+        joint_ids_fname = temp_dir + "/" + prefix + ".hits.ids"
+        cmd = f'cat {query} {target} > {joint_fasta_fname}_tmp; samtools faidx {joint_fasta_fname}_tmp'
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+        cmd = f"cat {blastp_outfile} | awk '{{print $1\"\\n\"$2}}' | sort | uniq > {joint_ids_fname}"
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+        cmd = f'xargs samtools faidx {joint_fasta_fname}_tmp < {joint_ids_fname} > {joint_fasta_fname};rm {joint_fasta_fname}_tmp'
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+
+        # Clustering and cluster filtering 
+        if os.path.isfile(cluster_file):
+            logging.info(f'Found clustering file {cluster_file}. Skipping')
+        else:
+            cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir)
+
+        # Cluster filtering
+        min_n = 0
+        query_ids_file = temp_dir + "/query.ids" 
+        functions.get_fasta_names(fasta_file = query,out_file = query_ids_file)
+        #functions.filter_clusters(cluster_file = cluster_file )
+        with open(query_ids_file, "r") as file:
+            query_ids = [line.strip() for line in file]
+        
+        import csv
+        clusters = {}
+        with open(cluster_file, "r") as file:
+            reader = csv.reader(file, delimiter="\t")
+            for cluster_name, sequence_name in reader:
+                clusters.setdefault(cluster_name, []).append(sequence_name)
+        print(f'# query sequences: {len(query_ids)}')
+        print(f'# clusters: {len(clusters)}')
+
+        # Filter by query sequences
+        clusters_filt = [k for k,v in clusters.items() if any(elem in query_ids for elem in v) and len(v) >= min_n]
+        logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters with query and >= {min_n} sequences.')
+        clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
+        clusters = clusters_filt_d
+        
+        if not soi == "":
+            logging.info('Filtering by species of interest {soi}')
+            clusters_filt = [k for k,v in clusters.items() if any(soi in elem  for elem in v)]
+            logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters with SOI ({soi}) sequences.')
+            clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
+            clusters = clusters_filt_d
+
+        # rename each cluster and store the sequences 
+        clusters_renamed = {}
+        for i,(k,v) in enumerate(clusters.items()):
+            clusters_renamed.update({"c"+str(i):v})
+        print(clusters_renamed)
+
+        # this file handling takes sooooooo much time .... 
+        # finally, get their sequences 
+        # an rename? why am I wasting my time like this?
+
+
+        from pyfaidx import Fasta
+
+        def filter_fasta(input_fasta, output_fasta, ids_to_keep):
+            fasta = Fasta(input_fasta)
+            with open(output_fasta, "w") as outfile:
+                for seq_id in ids_to_keep:
+                    if seq_id in fasta:
+                        outfile.write(f">{seq_id}\n{fasta[seq_id][:]}\n")
+
+        # Usage example
+        cl_id = 'c0'
+        fasta_file = joint_fasta_fname
+        ids_to_keep = clusters_renamed[cl_id]  # Replace with your list of IDs
+        output_fasta = "suka.c0.fasta"
+        filter_fasta(fasta_file, output_fasta, ids_to_keep)
