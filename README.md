@@ -1,6 +1,8 @@
 - make the search outputs obvious from the command line name  
 - mmseqs2 clustering  
 - easy-phylo: implement intermediate file checks   
+- add more possvm options   
+- make phylogeny run for less time 
 
 Installation:
 ```bash

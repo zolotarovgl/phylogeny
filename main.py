@@ -96,7 +96,7 @@ if __name__ == "__main__":
     parser_align.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_align.add_argument('-o', '--outfile', required=True, help='Output file')
     parser_align.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
-    parser_align.add_argument('-m', '--mafft', required=False, default ="--maxiterate 1000 --genafpair", help='Mafft alignment options. Default  --maxiterate 1000 --genafpair')
+    parser_align.add_argument('-m', '--mafft', required=False, default ="", help='Mafft alignment options. Default  "", you can set it to --maxiterate 1000 --genafpair')
     
     # Phylogeny
     parser_phylogeny = subparsers.add_parser('phylogeny', help='Run IQTREE2 for an alignment in --fasta')
@@ -112,17 +112,44 @@ if __name__ == "__main__":
 
     # POSSVM
     parser_possvm = subparsers.add_parser('possvm', help='Run POSSVM')
-    parser_possvm.add_argument('-t','--treefile', required = True, help='ID of the homology group')
-    parser_possvm.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name')
+    parser_possvm.add_argument('-t','--treefile', required = True, help='Input tree file')
+    parser_possvm.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name.')
+    parser_possvm.add_argument('-o','--ogprefix', default = "OG", help='String. Prefix for ortholog clusters. Defaults to "OG".')
     
 
     # EASY-PHYLO
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
     parser_easyphylo.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_easyphylo.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use')
-    parser_easyphylo.add_argument('-m', '--mafft', required=False, default ="--maxiterate 1000 --genafpair", help='Mafft alignment options. Default  --maxiterate 1000 --genafpair')
-    parser_easyphylo.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name')
+    parser_easyphylo.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
+    parser_easyphylo.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
+    parser_easyphylo.add_argument('-o','--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
+    parser_easyphylo.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
 
+    # PHYLO-SEARCH
+    parser_phylosearch = subparsers.add_parser('phylo-search',
+            description="""
+    Annotate the proteins based on blastp search and focused phylogenies:
+
+        1. Use BLASTP to search for the --query proteins in --target.
+        2. Cluster the hits using MMSEQS2 and filter the clusters 
+            - should include any query sequence and, optionally a species of interest (--soi) sequence
+        3. For each cluster:
+            - align using MAFFT 
+            - trim the aligment using ClipKit 
+            - run phylogeny using IQTREE2
+            - parse the phylogeny using POSSVM 
+        4. Concatenate the annotations
+    """, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser_phylosearch.add_argument('--query', required=True, help='Query fasta file containing sequences to search for.')
+    parser_phylosearch.add_argument('--target', required=True, help='Target fasta file - usually a collection of proteomes')
+    parser_phylosearch.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use.')
+    parser_phylosearch.add_argument('-p','--prefix', default = None, required = True, help='Prefix to use for all files and orthogroups.')
+    parser_phylosearch.add_argument('-s','--soi', default = None, required = False, help='Prefix of the species of interest - e.g. "Mlei"')
+    parser_phylosearch.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
+    parser_phylosearch.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
+    parser_phylosearch.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
+    
 
     args = parser.parse_args()
 
@@ -163,18 +190,23 @@ if __name__ == "__main__":
     elif args.command == 'possvm':
         if not os.path.exists('submodules/possvm-orthology/possvm.py'):
             logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
-        possvm(treefile  = args.treefile,reference_names = args.refnames)
+        possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix)
 
     elif args.command == 'easy-phylo':
         logging.info('Easy-phylo')
         fname_aln = os.path.splitext(args.fasta)[0] + '.aln'
         tree_prefix = os.path.splitext(args.fasta)[0] + '.tree'
         fname_tree = tree_prefix + ".treefile"
-        print(fname_aln)
-        print(args.fasta)
+        force = args.force 
 
-        align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = "")
-        phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu)
-        possvm(treefile = fname_tree,reference_names = args.refnames)
-        quit()
+        if os.path.isfile(fname_aln) and not force:
+            print(f'Found alignment file: {fname_aln}! Skipping alignment')
+        else:
+            align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = "")
+        if os.path.isfile(fname_tree) and not force:
+            print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
+        else:
+            phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu)
+        possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix)
+        print('Easy-phylo done!')
 
