@@ -7,7 +7,11 @@
 - manage --force and re-running  
 - Add fasttree 
 - Add HMM search 
+- Clustering guided by representative sequence alignment and phylogeny  
 - Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest  
+- MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!  
+- Think carefully how would you like to handle the clustering  
+- Make it species-focused / Ctenphora focused. Such that you can flag the lineage-specific duplicates  
 
 Installation:
 ```bash

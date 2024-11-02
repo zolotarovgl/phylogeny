@@ -38,7 +38,15 @@ def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode =
         logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
 
-def phylogeny(fasta_file, output_prefix, cptime = 5000, nstop = 50, nm = 500, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null'):
+# Phylogeny wrappers
+def phylogeny(fasta_file,output_prefix,ntmax = 1,method = 'iqtree2'):
+    if method == 'iqtree2':
+        phylogeny_iqtree(fasta_file,output_prefix,ntmax = ntmax)
+    elif method == 'fasttree':
+        outfile = output_prefix + ".treefile"
+        phylogeny_fasttree(fasta_file,outfile)
+
+def phylogeny_iqtree(fasta_file, output_prefix, cptime = 5000, nstop = 50, nm = 500, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null'):
     # Main output: {output_prefix}.treeflie
     # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
     logging.info(f"Phylogeny: {fasta_file} {output_prefix}")
@@ -72,19 +80,46 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
 
 # Phylo-search functions 
 
-def blastp(query,target,db,outfile,ncpu=1,outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null'):
+def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null'):
     cmd = f"makeblastdb -in {target} -dbtype prot -out {db} > {logfile}"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
-    cmd = f'blastp -query {query} -out {outfile} -db {db} -evalue 1e-5 -num_threads {ncpu} -outfmt "{outfmt}" >> {logfile} 2>&1'
+    cmd = f'blastp -query {query} -out {outfile} -db {db} -evalue {evalue} -num_threads {ncpu} -outfmt "{outfmt}" >> {logfile} 2>&1'
     #blastp -evalue 1e-5 -num_threads $NCPU -query $QUERY -db tmp/target -out search/${PREF}.blastp.tsv -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
-def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null'):
-    cmd = f"mmseqs easy-cluster -s 7.5 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
-    logging.info(cmd)
-    subprocess.run(cmd, shell=True, check=True)
+
+# ADD MCL clustering and converge to the same cluster structure! 
+def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.2"):
+    if method == 'mmeseqs2':
+        cmd = f"mmseqs easy-cluster -s 7.5 --cov-mode 0 --cluster-mode 2 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+    elif method == 'diamond_mcl':
+        cmd = f"diamond makedb --in {fasta_file} -d {fasta_file} --quiet"
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+
+        diamond_max_target_seqs = 30
+        cmd = f"diamond blastp --more-sensitive --max-target-seqs {diamond_max_target_seqs} -d {fasta_file} -q  {fasta_file} -o {out_prefix}_diamond.csv --quiet --threads {ncpu}"
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+        cmd = f"awk '{{ print $1,$2,$12 }}' {out_prefix}_diamond.csv > {out_prefix}_diamond.abc"
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True) 
+        cmd = f"mcl {out_prefix}_diamond.abc --abc -I {mcl_inflation} -o {out_prefix}_mcl.tsv 2> /dev/null"
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)  
+        cmd = f"""
+        cat {out_prefix}_mcl.tsv | awk '{{ for (i = 1; i <= NF; i++) print "c"NR"\\t"$i }}' > {out_prefix}_cluster.tsv
+        """
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)  
+
+    else:
+        logging.info(f'Unknown clustering method {method}!')
+        quit()
 
 def get_fasta_names(fasta_file,out_file):
     cmd = f"grep '>' {fasta_file} | sed 's/>//g' | sort | uniq > {out_file}"

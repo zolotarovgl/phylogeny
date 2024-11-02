@@ -231,6 +231,8 @@ if __name__ == "__main__":
         prefix = args.prefix
         soi = args.soi
         force = args.force
+        refnames_file = args.refnames
+        ncpu = args.ncpu
 
         # Directories
         # check the temporary directory status:
@@ -268,7 +270,8 @@ if __name__ == "__main__":
         if os.path.isfile(cluster_file):
             logging.info(f'Found clustering file {cluster_file}. Skipping')
         else:
-            cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log)
+            clustering_method = 'diamond_mcl' 
+            cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method)
 
         # Cluster filtering
         query_ids_file = os.path.join(temp_dir,'query.ids') 
@@ -315,26 +318,41 @@ if __name__ == "__main__":
         logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters passing filtering.')
         clusters = clusters_filt_d
         
-        if not soi == "":
-            logging.info('Filtering by species of interest {soi}')
-            clusters_filt = [k for k,v in clusters.items() if any(soi in elem  for elem in v)]
-            logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters with SOI ({soi}) sequences.')
-            clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
-            clusters = clusters_filt_d
+        require_soi = False
+        if require_soi:
+            if not soi == "":
+                logging.info('Filtering by species of interest {soi}')
+                clusters_filt = [k for k,v in clusters.items() if any(soi in elem  for elem in v)]
+                logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters with SOI ({soi}) sequences.')
+                clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
+                clusters = clusters_filt_d
 
         # rename each cluster and store the sequences 
         clusters_renamed = {}
         for i,(k,v) in enumerate(clusters.items()):
             clusters_renamed.update({cluster_prefix+str(i):v})
 
+        # if provided the refnames, read in and store for each cluster 
+        if refnames_file: 
+            refnames = {}
+            with open(refnames_file, "r") as file:
+                reader = csv.reader(file, delimiter="\t")
+                for key, value in reader:
+                    refnames[key] = value
+            cl_to_refname = {}
+            for k,v in clusters_renamed.items():
+                cl_to_refname.update({k:",".join(sorted([refnames[x] for x in v if x in refnames.keys()]))})
+        
         # write down the filtered clustering file 
         cluster_tabfile = os.path.join(output_directory,prefix + '.clusters.tsv')
         with open(cluster_tabfile, "w") as file:
             for k,v in clusters_renamed.items():
-                file.write(k + "\t" + ",".join(v) +  "\n")
+                if refnames_file:
+                    file.write(k + "\t" + ",".join(v) + "\t" + cl_to_refname[k] + "\n")
+                else:
+                    file.write(k + "\t" + ",".join(v) +  "\n")
         logging.info(f'Created: {cluster_tabfile}')
-        quit()
-
+        
         # For each cluster, create a separate file:
         for cl_id in clusters_renamed.keys():
             fasta_file = joint_fasta_fname
@@ -356,17 +374,17 @@ if __name__ == "__main__":
             if os.path.isfile(fname_aln):
                 print(f'Found alignment file: {fname_aln}! Skipping alignment')
             else:
-                align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = "", logfile = logfile)
+                align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = "", logfile = logfile)
             if os.path.isfile(fname_tree):
                 print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
             else:
-                functions.phylogeny_fasttree(fasta_file = fname_aln, output_file = fname_tree)
-                #phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu)
+                #functions.phylogeny_fasttree(fasta_file = fname_aln, output_file = fname_tree)
+                phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = ncpu)
 
 
             ogprefix = cl_id + "."
 
-            possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = ogprefix,logfile = logfile)
+            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = ogprefix,logfile = logfile)
         # concatenate annotation files 
         os.makedirs('results',exist_ok = True)
         anno_files = [os.path.join(cluster_directory, file) for file in os.listdir(cluster_directory) if 'ortholog_groups.csv' in file]
