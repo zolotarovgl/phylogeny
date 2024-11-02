@@ -1,8 +1,13 @@
-- make the search outputs obvious from the command line name  
-- mmseqs2 clustering  
-- easy-phylo: implement intermediate file checks   
 - add more possvm options   
 - make phylogeny run for less time 
+- cluster stats output 
+- separate log files 
+- move cluster filtering from the main 
+- make nicer temporary and output directories  
+- manage --force and re-running  
+- Add fasttree 
+- Add HMM search 
+- Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest  
 
 Installation:
 ```bash
@@ -20,5 +25,8 @@ python main.py phylogeny -f results_annotation/alignments/test.aln -o results_an
 
 
 # search the proteomes and annotate the hits
-python main.py phylo-search --query example/rho_cdc42.fasta --target example/Mlei.fasta -c 15 -p dummy
+python main.py phylo-search --query example/rho_cdc42.fasta --target example/Mlei.fasta -c 3 -o test -p x
+
+
+python main.py phylo-search --query Hsap_Myosin.fasta --target example/proteomes.fasta -c 15 -o results -s Mlei -r Hsap_gene_names.csv -p boo
 ```
