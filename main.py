@@ -318,7 +318,7 @@ if __name__ == "__main__":
         logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters passing filtering.')
         clusters = clusters_filt_d
         
-        require_soi = False
+        require_soi = True
         if require_soi:
             if not soi == "":
                 logging.info('Filtering by species of interest {soi}')

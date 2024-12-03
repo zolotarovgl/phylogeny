@@ -91,7 +91,7 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",outfmt = "6 qseqid sse
 
 
 # ADD MCL clustering and converge to the same cluster structure! 
-def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.2"):
+def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1"):
     if method == 'mmeseqs2':
         cmd = f"mmseqs easy-cluster -s 7.5 --cov-mode 0 --cluster-mode 2 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
         logging.info(cmd)
