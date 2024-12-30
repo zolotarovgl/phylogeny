@@ -44,6 +44,8 @@ def do_hmmsearch(hmm,hmm_dir, out, fasta, cpu, threshold, pfam_db = None,verbose
     hmm_path = os.path.join(hmm_dir,hmm + '.hmm')
     pfam_db = "/home/grygoriyzolotarov/ant/xgraubove/data/pfam/Pfam-A.hmm"
 
+    if not os.path.exists(hmm_dir):
+        os.makedirs(hmm_dir)
     if not os.path.exists(hmm_path) or os.path.getsize(hmm_path) == 0:
         logging.error(f"HMM model file {hmm_path} not found! Trying to fetch from {pfam_db} ...")
         fetch_hmm(hmm,pfam_db,hmm_path)
