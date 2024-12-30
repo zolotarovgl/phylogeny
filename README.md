@@ -22,9 +22,18 @@ git clone --recurse-submodules https://github.com/zolotarovgl/phylogeny.git
 
 Examples: 
 ```bash
-python main.py search -f data/sample.fasta -g data/genefam.tsv Myosin -o searches
-# searches for specific family  
+PFAM_DB=~/ant/xgraubove/data/pfam/Pfam-A.hmm #location of PFAM database for .hmm fetching 
+python main.py search -f data/sample.fasta -g data/genefam.tsv Insulin -o results --pfam_db $PFAM_DB
 
+# Main outputs: 
+# bet.Insulin.domains.fasta - domain sequences
+# bet.Insulin.domains.csv - domain ranges .bed file 
+# bet.Insulin.seqs.fasta - full protein sequences
+
+
+
+
+###########
 mkdir -p results_annotation/alignments
 python main.py align -f results_annotation/searches/myo.Myosin.domains.fasta -o results_annotation/alignments/test.aln -c 10
 mkdir -p results_annotation/gene_trees

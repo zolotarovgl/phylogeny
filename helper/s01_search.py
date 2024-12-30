@@ -42,12 +42,14 @@ def do_hmmsearch(hmm,hmm_dir, out, fasta, cpu, threshold, pfam_db = None,verbose
     logging.info(f"threshold: {threshold}")
 
     hmm_path = os.path.join(hmm_dir,hmm + '.hmm')
-    pfam_db = "/home/grygoriyzolotarov/ant/xgraubove/data/pfam/Pfam-A.hmm"
 
     if not os.path.exists(hmm_dir):
         os.makedirs(hmm_dir)
     if not os.path.exists(hmm_path) or os.path.getsize(hmm_path) == 0:
         logging.error(f"HMM model file {hmm_path} not found! Trying to fetch from {pfam_db} ...")
+        if not pfam_db:
+            logging.error(f"Please, specify Pfam-A.hmm location using --pfam_db option! I will try to fetch {hmm}.hmm from it. Thank you!")
+            sys.exit(1)
         fetch_hmm(hmm,pfam_db,hmm_path)
     else:
         logging.info(f'Found {hmm_path}')
@@ -74,7 +76,7 @@ def do_hmmsearch(hmm,hmm_dir, out, fasta, cpu, threshold, pfam_db = None,verbose
     if verbose:
         print(f"Hmmsearch created: {hmmsearch_outfile}")
 
-def merge_results(prefix,gene_family_name, searches_dir, fasta_file, verbose = False):
+def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand = 50,verbose = False):
     #prefix = gene_family_name
     fam_id = gene_family_name
     # Check for any hits
@@ -111,11 +113,11 @@ def merge_results(prefix,gene_family_name, searches_dir, fasta_file, verbose = F
         if verbose:
             print(cmd)
         subprocess.run(cmd, shell=True, check=True)
-        
+        logging.info(f"Expanding domain ranges: {domain_expand}")
         # Expand domain region by a fixed amount of aa
         cmd = (
             f"bedtools slop -i {searches_dir}/{prefix}.{fam_id}.domains.csv.tmp2 "
-            f"-g {searches_dir}/{prefix}.{fam_id}.seqs.fasta.fai -b 50 "
+            f"-g {searches_dir}/{prefix}.{fam_id}.seqs.fasta.fai -b {domain_expand} "
             f"| awk 'BEGIN{{OFS=@\\t@}}{{ print $1, $2+1, $3, $4 }}' > {searches_dir}/{prefix}.{fam_id}.domains.csv "
         )
         cmd = cmd.replace("@",'"')
@@ -154,7 +156,7 @@ def parse_gene_family_info(gene_family_info):
             }
     return gene_families
 
-def search(fasta_file, gene_family_info, gene_family_name, output_dir, config = 'config.yaml', verbose = 1):
+def search(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_db, config, domain_expand = 50,verbose = 1):
     logging.info(f"# {fasta_file}: {gene_family_name} | HMM search")
     gene_families = parse_gene_family_info(gene_family_info)
    # if verbose: 
@@ -169,6 +171,8 @@ def search(fasta_file, gene_family_info, gene_family_name, output_dir, config = 
     threshold = gene_family["threshold"]
     cpu = config.get("cpu", 4)
     hmm_dir = config["hmm_dir"]
+    domain_expand = int(domain_expand)
+
     searches_dir = output_dir
     os.makedirs(searches_dir, exist_ok=True)
     
@@ -177,7 +181,7 @@ def search(fasta_file, gene_family_info, gene_family_name, output_dir, config = 
         for hmm in hmms:
             logging.info(f"Running HMM search for {gene_family_name} with HMM: {hmm}")
             output_pref = os.path.join(searches_dir, f"{prefix}.{gene_family_name}.hmmsearch.domain_{hmm}")
-            do_hmmsearch(hmm,hmm_dir, output_pref, fasta_file, cpu, threshold)
+            do_hmmsearch(hmm,hmm_dir, output_pref, fasta_file, cpu, threshold,pfam_db,verbose = verbose)
             # Concatenate results
             output_file = f'{output_pref}.domtable'
             with open(output_file, 'r') as infile:
@@ -194,5 +198,5 @@ def search(fasta_file, gene_family_info, gene_family_name, output_dir, config = 
     if num_hit_genes == 0:
         logging.info(f"# {fasta_file}: {gene_family_name} | Omit downstream analyses")
     else:
-        merge_results(prefix,gene_family_name, searches_dir, fasta_file)
+        merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand,verbose = verbose)
 
