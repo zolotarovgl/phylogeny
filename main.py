@@ -85,7 +85,13 @@ if __name__ == "__main__":
     # Search 
     parser_search = subparsers.add_parser('search', help='Search for a family using HMMER')
     parser_search.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
-    parser_search.add_argument('-g', '--gene_family_info', required=True, help='Path to the gene family info file specifying HMMs and parameters')
+    parser_search.add_argument('-g', 
+        '--gene_family_info', 
+        required=True, 
+        help="""
+            Path to the gene family info file specifying HMMs and parameters.
+            See example file data/genefam.tsv.
+            """)
     parser_search.add_argument('gene_family_name', help='Name of the gene family to search')
 
     # Cluster
