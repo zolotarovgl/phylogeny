@@ -1,3 +1,5 @@
+- remove config  
+- simplify gene family file  
 - add more possvm options   
 - make phylogeny run for less time 
 - cluster stats output 
@@ -20,7 +22,8 @@ git clone --recurse-submodules https://github.com/zolotarovgl/phylogeny.git
 
 Examples: 
 ```bash
-python main.py search -f data/sample.fasta -g data/genefam.tsv Myosin # creates results_annotation/searches/myo.Myosin.domains.fasta
+python main.py search -f data/sample.fasta -g data/genefam.tsv Myosin -o searches
+# searches for specific family  
 
 mkdir -p results_annotation/alignments
 python main.py align -f results_annotation/searches/myo.Myosin.domains.fasta -o results_annotation/alignments/test.aln -c 10

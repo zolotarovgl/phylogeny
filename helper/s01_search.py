@@ -10,30 +10,59 @@ def activate_conda_environment(env_name):
     logging.info(f"Activating conda environment: {env_name}")
     subprocess.run(f"conda activate {env_name}", shell=True, check=True)
 
-def do_hmmsearch(hmm, out, fasta, cpu, threshold, verbose = False):
+def fetch_hmm(hmm,pfam_db,outfile):
+    if not os.path.exists(pfam_db):
+        logging.error(f"Specified PFAM database ({pfam_db}) doesn't exist. Specify using --pfam_db option!")
+        sys.exit(1)
+    cmd = f"hmmfetch {pfam_db} {hmm} > {outfile}"
+    try:
+        subprocess.run(cmd, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with error: {e}")
+        print(f"Return code: {e.returncode}")
+        print(f"Command: {e.cmd}")
+
+    if os.path.isfile(outfile) and os.path.getsize(outfile) == 0:
+        logging.error(f"""
+                {outfile} is empty. 
+                This means PFAM db file doesn't contain {hmm}!
+                Check the db file {pfam_db} or the .hmm model name spelling!""")
+        sys.exit(1)
+    else:
+        logging.info(f"Fetched {hmm} from {pfam_db}: {outfile}")
+
+
+def do_hmmsearch(hmm,hmm_dir, out, fasta, cpu, threshold, pfam_db = None,verbose = False):
     logging.info("Running HMMSEARCH")
     logging.info(f"hmm: {hmm}")
+    logging.info(f"hmm_dir: {hmm_dir}")
     logging.info(f"out: {out}")
     logging.info(f"fasta: {fasta}")
     logging.info(f"cpu: {cpu}")
     logging.info(f"threshold: {threshold}")
 
-    if not os.path.exists(hmm):
-        logging.error(f"HMM model file {hmm} not found!\nCheck the config.yaml file!")
-        sys.exit(1)
+    hmm_path = os.path.join(hmm_dir,hmm + '.hmm')
+    pfam_db = "/home/grygoriyzolotarov/ant/xgraubove/data/pfam/Pfam-A.hmm"
 
+    if not os.path.exists(hmm_path) or os.path.getsize(hmm_path) == 0:
+        logging.error(f"HMM model file {hmm_path} not found! Trying to fetch from {pfam_db} ...")
+        fetch_hmm(hmm,pfam_db,hmm_path)
+    else:
+        logging.info(f'Found {hmm_path}')
+    
     if threshold == "GA":
         cmd = (
             f"hmmsearch --domtblout {out}.domtable --cut_ga "
-            f"--cpu {cpu} {hmm} {fasta} 1> /dev/null"
+            f"--cpu {cpu} {hmm_path} {fasta} 1> /dev/null"
         )
     else:
         cmd = (
             f"hmmsearch --domtblout {out}.domtable --domE {threshold} "
-            f"--cpu {cpu} {hmm} {fasta} 1> /dev/null"
+            f"--cpu {cpu} {hmm_path} {fasta} 1> /dev/null"
         )
     
     subprocess.run(cmd, shell=True, check=True)
+    
     hmmsearch_outfile = f"{out}.domtable.csv.tmp"
     with open(f"{out}.domtable", 'r') as infile, open(hmmsearch_outfile, 'w') as outfile:
         for line in infile:
@@ -123,7 +152,7 @@ def parse_gene_family_info(gene_family_info):
             }
     return gene_families
 
-def search(fasta_file, gene_family_info, gene_family_name, config, verbose):
+def search(fasta_file, gene_family_info, gene_family_name, output_dir, config = 'config.yaml', verbose = 1):
     logging.info(f"# {fasta_file}: {gene_family_name} | HMM search")
     gene_families = parse_gene_family_info(gene_family_info)
    # if verbose: 
@@ -138,7 +167,7 @@ def search(fasta_file, gene_family_info, gene_family_name, config, verbose):
     threshold = gene_family["threshold"]
     cpu = config.get("cpu", 4)
     hmm_dir = config["hmm_dir"]
-    searches_dir = 'results_annotation/searches/'
+    searches_dir = output_dir
     os.makedirs(searches_dir, exist_ok=True)
     
     tmp_file = os.path.join(searches_dir, f"{prefix}.{gene_family_name}.domains.csv.tmp")
@@ -146,7 +175,7 @@ def search(fasta_file, gene_family_info, gene_family_name, config, verbose):
         for hmm in hmms:
             logging.info(f"Running HMM search for {gene_family_name} with HMM: {hmm}")
             output_pref = os.path.join(searches_dir, f"{prefix}.{gene_family_name}.hmmsearch.domain_{hmm}")
-            do_hmmsearch(os.path.join(hmm_dir, f"{hmm}.hmm"), output_pref, fasta_file, cpu, threshold)
+            do_hmmsearch(hmm,hmm_dir, output_pref, fasta_file, cpu, threshold)
             # Concatenate results
             output_file = f'{output_pref}.domtable'
             with open(output_file, 'r') as infile:

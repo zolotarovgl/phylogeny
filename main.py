@@ -93,7 +93,8 @@ if __name__ == "__main__":
             See example file data/genefam.tsv.
             """)
     parser_search.add_argument('gene_family_name', help='Name of the gene family to search')
-
+    parser_search.add_argument('-o','--output_dir',required=True, help='Output directory')
+    parser_search.add_argument('--hmm_dir',required=False, default = None, help='HMM directory')
     # Cluster
     parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
     parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
@@ -176,7 +177,14 @@ if __name__ == "__main__":
 
     if args.command == 'search':
         logging.info("Command: Search")
-        search(args.fasta, args.gene_family_info, args.gene_family_name, config, verbose)
+        if args.hmm_dir:
+            logging.info(f'HMM directory specified: {args.hmm_dir}')
+            hmm_dir = args.hmm_dir
+        else:
+            logging.info(f'No HMM directory specified. Checking config.yaml ...')
+            hmm_dir = config['hmm_dir']
+            logging.info(f'HMM directory from config.yaml: {hmm_dir}')
+        search(args.fasta, args.gene_family_info, args.gene_family_name, args.output_dir, config, verbose)
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
