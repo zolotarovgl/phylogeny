@@ -119,7 +119,7 @@ if __name__ == "__main__":
     parser_phylogeny.add_argument('-c', '--ncpu', required=True,  help='Number of CPU cores to use')
 
     # GeneRax
-    parser_generax = subparsers.add_parser('generax', help='Run GeneRax')
+    parser_generax = subparsers.add_parser('generax', help='Run GeneRax [NOT IMPLEMENTED]')
     parser_generax.add_argument('-t','--tree', required = True, help='Species tree')
     parser_generax.add_argument('-f','--fasta', required = True, help='Alignment file')
     parser_generax.add_argument('-o','--outdir', required = True, help='Output folder')
