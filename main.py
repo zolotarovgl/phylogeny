@@ -82,8 +82,8 @@ if __name__ == "__main__":
     """)
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
 
-    # Search 
-    parser_search = subparsers.add_parser('search', help='Search for a family using HMMER')
+    # HMM Search 
+    parser_search = subparsers.add_parser('hmmsearch', help='Search for a family using HMMER')
     parser_search.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_search.add_argument('-g', 
         '--gene_family_info', 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
 
     config = load_config()
 
-    if args.command == 'search':
+    if args.command == 'hmmsearch':
         logging.info("Command: Search")
         if args.hmm_dir:
             logging.info(f'HMM directory specified: {args.hmm_dir}')

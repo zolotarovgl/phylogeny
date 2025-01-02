@@ -13,7 +13,6 @@
 - Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest  
 - MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!  
 - Think carefully how would you like to handle the clustering  
-- Make it species-focused / Ctenphora focused. Such that you can flag the lineage-specific duplicates  
 
 Installation:
 ```bash
@@ -23,7 +22,11 @@ git clone --recurse-submodules https://github.com/zolotarovgl/phylogeny.git
 Examples: 
 ```bash
 PFAM_DB=~/ant/xgraubove/data/pfam/Pfam-A.hmm #location of PFAM database for .hmm fetching 
-python main.py search -f data/sample.fasta -g data/genefam.tsv Insulin -o results --pfam_db $PFAM_DB
+python main.py hmmsearch -f data/sample.fasta -g data/genefam.tsv Insulin -o results --pfam_db $PFAM_DB --domain_expand 50 
+```
+
+- `--domain_expand` option controls the number of aminoacids added from left and right of the extracted domain range   
+
 
 # Main outputs: 
 # bet.Insulin.domains.fasta - domain sequences
@@ -32,7 +35,7 @@ python main.py search -f data/sample.fasta -g data/genefam.tsv Insulin -o result
 
 
 
-
+```bash
 ###########
 mkdir -p results_annotation/alignments
 python main.py align -f results_annotation/searches/myo.Myosin.domains.fasta -o results_annotation/alignments/test.aln -c 10
