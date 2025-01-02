@@ -28,10 +28,10 @@ python main.py hmmsearch -f data/sample.fasta -g data/genefam.tsv Insulin -o res
 - `--domain_expand` option controls the number of aminoacids added from left and right of the extracted domain range   
 
 
-# Main outputs: 
-# bet.Insulin.domains.fasta - domain sequences
-# bet.Insulin.domains.csv - domain ranges .bed file 
-# bet.Insulin.seqs.fasta - full protein sequences
+Main outputs: 
+- `bet.Insulin.domains.fasta` - domain ranges sequences  
+- `bet.Insulin.domains.csv` - domain ranges .bed file   
+- `bet.Insulin.seqs.fasta` - full protein sequences  
 
 
 
