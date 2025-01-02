@@ -117,6 +117,7 @@ if __name__ == "__main__":
     parser_phylogeny.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_phylogeny.add_argument('-o', '--outprefix', required=True, help='Output prefix for IQTREE2 files')
     parser_phylogeny.add_argument('-c', '--ncpu', required=True,  help='Number of CPU cores to use')
+    parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
 
     # GeneRax
     parser_generax = subparsers.add_parser('generax', help='Run GeneRax [NOT IMPLEMENTED]')
@@ -139,6 +140,7 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_easyphylo.add_argument('-o','--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
     parser_easyphylo.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
+    parser_easyphylo.add_argument('--method', default = "fasttree", help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
 
     # PHYLO-SEARCH
     parser_phylosearch = subparsers.add_parser('phylo-search',
@@ -206,8 +208,8 @@ if __name__ == "__main__":
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
-        check("iqtree2")
-        phylogeny(fasta_file = args.fasta, output_prefix = args.outprefix,ntmax = args.ncpu)
+        method = args.method 
+        phylogeny(fasta_file = args.fasta, output_prefix = args.outprefix,ntmax = args.ncpu, method = method)
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")
@@ -225,6 +227,7 @@ if __name__ == "__main__":
         tree_prefix = os.path.splitext(args.fasta)[0] + '.tree'
         fname_tree = tree_prefix + ".treefile"
         force = args.force
+        method = args.method 
 
         if os.path.isfile(fname_aln) and not force:
             print(f'Found alignment file: {fname_aln}! Skipping alignment')
@@ -233,7 +236,7 @@ if __name__ == "__main__":
         if os.path.isfile(fname_tree) and not force:
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
-            phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu)
+            phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu, method = method)
         possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix)
         print('Easy-phylo done!')
 
