@@ -101,8 +101,10 @@ if __name__ == "__main__":
     # Cluster
     parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
     parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
-    parser_cluster.add_argument('-o', '--outfile', required=True, help='Output file')
-    parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
+    parser_cluster.add_argument('--out_file', required=False, default = None, help='Output file. CAVE: should be named PREFIX_cluster.tsv')
+    parser_cluster.add_argument('--out_prefix', required=False,default = None, help='Output file prefix. Vis --out_file.')
+    parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use. Default: 1')
+    parser_cluster.add_argument('-t', '--temp_dir', required=False, default = "tmp/", help='Temporary directory name. Default: tmp/')
     parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
 
     # Alignment
@@ -196,9 +198,30 @@ if __name__ == "__main__":
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
+        clustering_method = 'diamond_mcl'
+        
         check('diamond')
         check('mcl')
-        cluster(fasta_file = args.fasta, output_file = args.outfile ,inflation = args.inflation, ncpu = args.ncpu)
+        #cluster(fasta_file = args.fasta, output_file = args.outfile ,inflation = args.inflation, ncpu = args.ncpu)
+        
+        infasta = args.fasta
+        temp_dir = 'tmp/'
+        cluster_log = 'tmp/cluster.log'
+        ncpu = args.ncpu
+        if not args.out_file and not args.out_prefix:
+            print("Provide either --out_file or --out_prefix for clustering command!")
+            sys.exit(1) 
+        elif not args.out_file and args.out_prefix:
+            print('out_prefix provided')
+            out_prefix = args.out_prefix
+        elif not args.out_prefix and args.out_file:
+            print('out_file provided')
+            out_prefix = args.out_file.replace('_cluster.tsv','')
+        else:
+            print("Provide either --out_file or --out_prefix for clustering command!")
+        # should create {out_prefix}_cluster.tsv 
+        cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method)
+
 
     elif args.command == 'align':
         logging.info("Command: Align")
