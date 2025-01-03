@@ -7,6 +7,7 @@ dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
   - alsa-lib=1.2.13=hb9d3cd8_0
+  - aria2=1.37.0=hbc8128a_2
   - attr=2.5.1=h166bdaf_1
   - bedtools=2.31.1=h13024bc_3
   - biopython=1.84=py39hd3abc70_0
@@ -81,6 +82,7 @@ dependencies:
   - libgomp=14.2.0=h77fa898_1
   - libgpg-error=1.51=hbd13f7d_1
   - libiconv=1.17=hd590300_2
+  - libidn2=2.3.7=hd590300_0
   - libjpeg-turbo=3.0.0=hd590300_1
   - liblapack=3.9.0=26_linux64_openblas
   - libllvm19=19.1.6=ha7bfdaf_0
@@ -100,6 +102,7 @@ dependencies:
   - libstdcxx=14.2.0=hc0a3c3a_1
   - libstdcxx-ng=14.2.0=h4852527_1
   - libsystemd0=256.9=h0b6a36f_2
+  - libunistring=0.9.10=h7f98852_0
   - libuuid=2.38.1=h0b41bf4_0
   - libvorbis=1.3.7=h9c3ff4c_0
   - libxcb=1.17.0=h8a09558_0
@@ -111,6 +114,8 @@ dependencies:
   - lxml=5.3.0=py39ha9b3668_2
   - lz4-c=1.10.0=h5888daf_1
   - mafft=7.526=h4bc722e_0
+  - mcl=22.282=pl5321h7b50bb2_3
+  - mmseqs2=16.747c6=pl5321hd6d6fdc_1
   - mpfr=4.2.1=h90cbb55_3
   - mpg123=1.32.9=hc50e24c_0
   - mysql-common=9.0.1=h266115a_4
@@ -125,6 +130,7 @@ dependencies:
   - packaging=24.2=pyhd8ed1ab_2
   - pandas=2.2.3=py39h3b40f6f_1
   - pcre2=10.44=hba22ea6_2
+  - perl=5.32.1=7_hd590300_perl5
   - pip=24.3.1=pyh8b19718_2
   - pixman=0.44.2=h29eaf8c_0
   - ply=3.11=pyhd8ed1ab_3
@@ -150,6 +156,7 @@ dependencies:
   - tomli=2.2.1=pyhd8ed1ab_1
   - tqdm=4.67.1=pyhd8ed1ab_1
   - tzdata=2024b=hc8b5060_0
+  - wget=1.21.4=hda4d442_0
   - wheel=0.45.1=pyhd8ed1ab_1
   - xcb-util=0.4.1=hb711507_2
   - xcb-util-image=0.4.0=hb711507_2
@@ -169,5 +176,6 @@ dependencies:
   - xorg-libxxf86vm=1.1.6=hb9d3cd8_0
   - xorg-xextproto=7.3.0=hb9d3cd8_1004
   - yaml=0.2.5=h7f98852_2
+  - zlib=1.3.1=hb9d3cd8_2
   - zstd=1.5.6=ha6fb4c9_0
 prefix: /users/asebe/gzolotarov/miniconda3/envs/phylo
