@@ -88,7 +88,7 @@ def do_hmmsearch(hmm,hmm_dir, out, fasta, cpu, threshold, pfam_db = None,verbose
     if verbose:
         print(f"Hmmsearch created: {hmmsearch_outfile}")
 
-def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand = 50,verbose = False):
+def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand = 50,verbose = False, do_clean = False):
     #prefix = gene_family_name
     fam_id = gene_family_name
     logging.info(f'Merging results ...')
@@ -157,8 +157,31 @@ def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expa
         # Report
         num_unique_domains_cmd = f"cut -f1 {searches_dir}/{prefix}.{fam_id}.domains.csv | wc -l"
         num_unique_domains = subprocess.check_output(num_unique_domains_cmd, shell=True).strip().decode('utf-8')
-        logging.info(f"# {fasta_file}: {fam_id} | # unique domains = {num_unique_domains}")
+        logging.info(f"{fasta_file}: {fam_id} | # unique domains = {num_unique_domains}")
+        if do_clean:
+            def list_temp_files(directory, prefix, endings):
+                matching_files = []
+                for file in os.listdir(directory):
+                    if file.endswith(tuple(endings)) and file.startswith(prefix):
+                        matching_files.append(directory + '/' + file)
+                return matching_files
+            
 
+            endings = [".tmp","tmp2","dmnd","domtable","genes.list"]
+            temp_files = list_temp_files(searches_dir,f'{prefix}.{fam_id}',endings)
+            logging.info("Removing temporary files...")
+            def remove_files(file_list):
+                for file in file_list:
+                    try:
+                        os.remove(file)
+                        print(f"Removed: {file}")
+                    except FileNotFoundError:
+                        print(f"File not found: {file}")
+                    except PermissionError:
+                        print(f"Permission denied: {file}")
+                    except Exception as e:
+                        print(f"Error removing {file}: {e}")
+            remove_files(temp_files)
 
 def parse_gene_family_info(gene_family_info):
     gene_families = {}
@@ -176,7 +199,7 @@ def parse_gene_family_info(gene_family_info):
             }
     return gene_families
 
-def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_db, config, domain_expand = 50,verbose = 1):
+def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_db, config, domain_expand = 50,verbose = 1, do_clean = True):
     logging.info(f"# {fasta_file}: {gene_family_name} | HMM search")
     gene_families = parse_gene_family_info(gene_family_info)
    # if verbose: 
@@ -218,5 +241,5 @@ def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_d
     if num_hit_genes == 0:
         logging.info(f"# {fasta_file}: {gene_family_name} | Omit downstream analyses")
     else:
-        merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand,verbose = verbose)
+        merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand,verbose = verbose, do_clean = do_clean)
 
