@@ -1,19 +1,3 @@
-- remove config  
-- simplify gene family file  
-- add more possvm options   
-- make phylogeny run for less time 
-- cluster stats output 
-- separate log files 
-- move cluster filtering from the main 
-- make nicer temporary and output directories  
-- manage --force and re-running  
-- Add fasttree 
-- Add HMM search 
-- Clustering guided by representative sequence alignment and phylogeny  
-- Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest  
-- MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!  
-- Think carefully how would you like to handle the clustering  
-
 Installation:
 ```bash
 git clone --recurse-submodules https://github.com/zolotarovgl/phylogeny.git
