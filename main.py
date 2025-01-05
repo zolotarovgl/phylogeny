@@ -5,7 +5,9 @@ import csv
 import argparse
 import logging
 import yaml
-from helper.s01_search import search
+from Bio import SeqIO
+
+from helper.hmmsearch import hmmsearch
 from helper.s02_cluster import cluster
 from helper.functions import align_and_trim
 from helper.functions import phylogeny
@@ -106,6 +108,7 @@ if __name__ == "__main__":
     parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use. Default: 1')
     parser_cluster.add_argument('-t', '--temp_dir', required=False, default = "tmp/", help='Temporary directory name. Default: tmp/')
     parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
+    parser_cluster.add_argument('-m', '--maxn', default = int(1000), help='Maximum number of sequences in the cluster. Default: 1000')
 
     # Alignment
     parser_align = subparsers.add_parser('align', help='Run alignment')
@@ -194,20 +197,22 @@ if __name__ == "__main__":
         
         pfam_db = args.pfam_db
         domain_expand = int(args.domain_expand) 
-        search(args.fasta, args.gene_family_info, args.gene_family_name, args.output_dir, pfam_db,config = config, domain_expand = domain_expand, verbose = verbose)
+        hmmsearch(args.fasta, args.gene_family_info, args.gene_family_name, args.output_dir, pfam_db,config = config, domain_expand = domain_expand, verbose = verbose)
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
         clustering_method = 'diamond_mcl'
         
-        check('diamond')
-        check('mcl')
-        #cluster(fasta_file = args.fasta, output_file = args.outfile ,inflation = args.inflation, ncpu = args.ncpu)
+        #check('diamond')
+        #check('mcl')
         
         infasta = args.fasta
         temp_dir = 'tmp/'
         cluster_log = 'tmp/cluster.log'
-        ncpu = args.ncpu
+        ncpu = args.ncpu 
+        max_N = int(args.maxn) # maximum number of sequences in the biggest cluster
+ 
+
         if not args.out_file and not args.out_prefix:
             print("Provide either --out_file or --out_prefix for clustering command!")
             sys.exit(1) 
@@ -220,13 +225,46 @@ if __name__ == "__main__":
         else:
             print("Provide either --out_file or --out_prefix for clustering command!")
         # should create {out_prefix}_cluster.tsv 
-        cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method)
+        cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = args.inflation)
+        cluster_file = out_prefix + '_cluster.tsv'
+
+        def top_n(file_path):
+            counts = {}
+            with open(file_path, 'r') as file:
+                for line in file:
+                    first_col = line.split('\t')[0]  # Get the first column
+                    counts[first_col] = counts.get(first_col, 0) + 1
+                # Sort by counts (descending) and get the most common value
+            return max(counts.values())
+
+        max_N_obs = top_n(cluster_file)
+        logging.info(f'{cluster_file}: max observed number of sequences: {max_N_obs}')
+        
+       
+        if max_N_obs > max_N:
+            logging.error(f'N sequences in the biggest cluster is more ({max_N_obs}) than allowed ({max_N})!')
+            logging.info('Trying to recluster with higher inflation...')
+            max_N_obs = top_n(cluster_file)
+            inflation = args.inflation
+            iteration = 0
+            max_iterations = 100
+
+            while max_N_obs > max_N and iteration < max_iterations:
+                inflation += 0.1
+                inflation = round(inflation,1)
+                logging.info(f'Iteration: {iteration}; Inflation: {inflation}')
+                cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
+                iteration += 1
+            if iteration >= max_iterations:
+                logging.error(f'Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
+                sys.exit(1)
+                
 
 
     elif args.command == 'align':
         logging.info("Command: Align")
         #check('mafft')
-        check('clipkit')
+        #check('clipkit')
         align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft)
 
     elif args.command == 'phylogeny':
@@ -240,8 +278,8 @@ if __name__ == "__main__":
         #run_generax()
 
     elif args.command == 'possvm':
-        if not os.path.exists('submodules/possvm-orthology/possvm.py'):
-            logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
+        #if not os.path.exists('submodules/possvm-orthology/possvm.py'):
+        #    logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
         possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix)
 
     elif args.command == 'easy-phylo' or args.command == 'blastology':

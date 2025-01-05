@@ -90,31 +90,37 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",outfmt = "6 qseqid sse
     subprocess.run(cmd, shell=True, check=True)
 
 
-# ADD MCL clustering and converge to the same cluster structure! 
-def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1"):
-    if method == 'mmeseqs2':
+def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = False):
+    if method == 'mmseqs2':
         cmd = f"mmseqs easy-cluster -s 7.5 --cov-mode 0 --cluster-mode 2 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
-        logging.info(cmd)
+        if verbose:
+             logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
     elif method == 'diamond_mcl':
         cmd = f"diamond makedb --in {fasta_file} -d {fasta_file} --quiet"
-        logging.info(cmd)
+        if verbose: 
+           logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
 
         diamond_max_target_seqs = 30
         cmd = f"diamond blastp --more-sensitive --max-target-seqs {diamond_max_target_seqs} -d {fasta_file} -q  {fasta_file} -o {out_prefix}_diamond.csv --quiet --threads {ncpu}"
-        logging.info(cmd)
+        if verbose:
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
         cmd = f"awk '{{ print $1,$2,$12 }}' {out_prefix}_diamond.csv > {out_prefix}_diamond.abc"
-        logging.info(cmd)
+        if verbose:
+             logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True) 
         cmd = f"mcl {out_prefix}_diamond.abc --abc -I {mcl_inflation} -o {out_prefix}_mcl.tsv 2> /dev/null"
-        logging.info(cmd)
+        
+        if verbose:
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)  
         cmd = f"""
-        cat {out_prefix}_mcl.tsv | awk '{{ for (i = 1; i <= NF; i++) print "c"NR"\\t"$i }}' > {out_prefix}_cluster.tsv
+        cat {out_prefix}_mcl.tsv | awk '{{ for (i = 1; i <= NF; i++) print "{cluster_prefix}"NR"\\t"$i }}' > {out_prefix}_cluster.tsv
         """
-        logging.info(cmd)
+        if verbose:
+             logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)  
 
     else:

@@ -5,10 +5,22 @@ import csv
 import argparse
 import logging
 import yaml
+from Bio import SeqIO
 
 def activate_conda_environment(env_name):
     logging.info(f"Activating conda environment: {env_name}")
     subprocess.run(f"conda activate {env_name}", shell=True, check=True)
+
+def extract_sequences(fasta_file, ids_file, output_file):
+    # Read the list of IDs from the file
+    with open(ids_file, 'r') as f:
+        ids_to_extract = set(line.strip() for line in f)
+    
+    # Parse the FASTA file and extract sequences
+    with open(output_file, 'w') as output_handle:
+        for record in SeqIO.parse(fasta_file, 'fasta'):
+            if record.id in ids_to_extract:
+                SeqIO.write(record, output_handle, 'fasta')
 
 def fetch_hmm(hmm,pfam_db,outfile):
     if not os.path.exists(pfam_db):
@@ -79,6 +91,7 @@ def do_hmmsearch(hmm,hmm_dir, out, fasta, cpu, threshold, pfam_db = None,verbose
 def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand = 50,verbose = False):
     #prefix = gene_family_name
     fam_id = gene_family_name
+    logging.info(f'Merging results ...')
     # Check for any hits
     cmd = f"cat {searches_dir}/{prefix}.{fam_id}.hmmsearch.*.domtable.csv.tmp | grep -v '#' | cut -f 1 | sort -u > {searches_dir}/{prefix}.{fam_id}.genes.list"
     subprocess.run(cmd, shell=True, check=True)
@@ -90,28 +103,33 @@ def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expa
         logging.info(f"# {fasta_file}: {fam_id} | Omit downstream analyses")
     else:
         # Find most-inclusive region that includes all domain hits in the protein
-        if verbose: 
-            print("-----")
         cmd = f"cat {searches_dir}/{prefix}.{fam_id}.hmmsearch.*.domtable.csv.tmp > {searches_dir}/{prefix}.{fam_id}.domtable.csv.tmp"
         if verbose:
-            print(cmd)
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, executable='/bin/bash', check=True)
         cmd = (
             f"bedtools merge -i <(sort -k1,1 -k2,2n {searches_dir}/{prefix}.{fam_id}.domtable.csv.tmp) "
             f"-c 4 -o collapse -d 100000 > {searches_dir}/{prefix}.{fam_id}.domains.csv.tmp2 "
         )
         if verbose:
-            print(cmd)
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, executable='/bin/bash', check=True)
+        # 4.01.25 - issue with I/O on .fai
         # Extract complete sequences
-        cmd = f"samtools faidx {fasta_file} -r {searches_dir}/{prefix}.{fam_id}.genes.list > {searches_dir}/{prefix}.{fam_id}.seqs.fasta"
-        if verbose:
-            print(cmd)
-        subprocess.run(cmd, shell=True, check=True)
+        #cmd = f"samtools faidx {fasta_file} -r {searches_dir}/{prefix}.{fam_id}.genes.list > {searches_dir}/{prefix}.{fam_id}.seqs.fasta"
+        #cmd = f'xargs  -P 1 -I {{}} samtools faidx {fasta_file} < {searches_dir}/{prefix}.{fam_id}.genes.list > {searches_dir}/{prefix}.{fam_id}.seqs.fasta'
+        #cmd = f'python get_seq.py {fasta_file} {searches_dir}/{prefix}.{fam_id}.genes.list {searches_dir}/{prefix}.{fam_id}.seqs.fasta'
+        
+        #if verbose:
+        #    logging.info(cmd)
+        #subprocess.run(cmd, shell=True, check=True)
+        
+        # Solution that doesn't require samtools 
+        extract_sequences(fasta_file,f"{searches_dir}/{prefix}.{fam_id}.genes.list",f"{searches_dir}/{prefix}.{fam_id}.seqs.fasta")
         # Dict sequence lengths
         cmd = f"samtools faidx {searches_dir}/{prefix}.{fam_id}.seqs.fasta"
         if verbose:
-            print(cmd)
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
         logging.info(f"Expanding domain ranges: {domain_expand}")
         # Expand domain region by a fixed amount of aa
@@ -122,18 +140,20 @@ def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expa
         )
         cmd = cmd.replace("@",'"')
         if verbose:
-            print(cmd)
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, executable='/bin/bash', check=True)
         # Extract domain region
         cmd = (
             f"bedtools getfasta -fi {searches_dir}/{prefix}.{fam_id}.seqs.fasta -bed "
             f"<(awk 'BEGIN{{OFS=@\\t@}}{{ print $1, $2, $3, $1 }}' {searches_dir}/{prefix}.{fam_id}.domains.csv) "
-            f"> {searches_dir}/{prefix}.{fam_id}.domains.fasta"
+            f" | sed -E 's/:[0-9]+-[0-9]+$//g' > {searches_dir}/{prefix}.{fam_id}.domains.fasta"
         )
         cmd = cmd.replace("@",'"')
         if verbose:
-            print(cmd)
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, executable='/bin/bash', check=True)
+        # Strip domain coordinates from the domain file
+
         # Report
         num_unique_domains_cmd = f"cut -f1 {searches_dir}/{prefix}.{fam_id}.domains.csv | wc -l"
         num_unique_domains = subprocess.check_output(num_unique_domains_cmd, shell=True).strip().decode('utf-8')
@@ -156,7 +176,7 @@ def parse_gene_family_info(gene_family_info):
             }
     return gene_families
 
-def search(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_db, config, domain_expand = 50,verbose = 1):
+def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_db, config, domain_expand = 50,verbose = 1):
     logging.info(f"# {fasta_file}: {gene_family_name} | HMM search")
     gene_families = parse_gene_family_info(gene_family_info)
    # if verbose: 
