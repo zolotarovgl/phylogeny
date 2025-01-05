@@ -1,0 +1,12 @@
+- remove config
+- simplify gene family file
+- add more possvm options
+- cluster stats output
+- separate log files
+- move cluster filtering from the main
+- make nicer temporary and output directories
+- manage --force and re-running
+- Clustering guided by representative sequence alignment and phylogeny
+- Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest
+- MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!
+- Think carefully how would you like to handle the clustering
