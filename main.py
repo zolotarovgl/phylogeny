@@ -135,8 +135,9 @@ if __name__ == "__main__":
     parser_possvm.add_argument('-t','--treefile', required = True, help='Input tree file')
     parser_possvm.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name.')
     parser_possvm.add_argument('-o','--ogprefix', default = "OG", help='String. Prefix for ortholog clusters. Defaults to "OG".')
+    parser_possvm.add_argument('-s','--refsps', default = None, help='POSSVM reference species')
+    parser_possvm.add_argument('--min_support_transfer', default = "50",dest = "possvm_minsupport", help='POSSVM Minimum support for label transfer')
     
-
     # EASY-PHYLO
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
     parser_easyphylo.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
@@ -146,6 +147,7 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('-o','--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
     parser_easyphylo.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
     parser_easyphylo.add_argument('--method', default = "fasttree", help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
+    parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
 
     # PHYLO-SEARCH
     parser_phylosearch = subparsers.add_parser('phylo-search',
@@ -252,13 +254,15 @@ if __name__ == "__main__":
             while max_N_obs > max_N and iteration < max_iterations:
                 inflation += 0.1
                 inflation = round(inflation,1)
-                logging.info(f'Iteration: {iteration}; Inflation: {inflation}')
                 cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
+                max_N_obs = top_n(cluster_file)
+                logging.info(f'Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}')
                 iteration += 1
             if iteration >= max_iterations:
                 logging.error(f'Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
                 sys.exit(1)
-                
+            else:
+                logging.info(f'Iterative clustering finished: Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}') 
 
 
     elif args.command == 'align':
@@ -278,9 +282,10 @@ if __name__ == "__main__":
         #run_generax()
 
     elif args.command == 'possvm':
+        min_support_transfer = float(args.possvm_minsupport)
         #if not os.path.exists('submodules/possvm-orthology/possvm.py'):
         #    logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
-        possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix)
+        possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix, refsps = args.refsps, min_support_transfer = min_support_transfer)
 
     elif args.command == 'easy-phylo' or args.command == 'blastology':
         logging.info('Easy-phylo')
@@ -298,7 +303,8 @@ if __name__ == "__main__":
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
             phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu, method = method)
-        possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix)
+        min_support_transfer = float(args.easyphylo_minsupport)
+        possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix,min_support_transfer = min_support_transfer)
         print('Easy-phylo done!')
 
     elif args.command == 'phylo-search':
@@ -458,7 +464,7 @@ if __name__ == "__main__":
             if os.path.isfile(fname_aln):
                 print(f'Found alignment file: {fname_aln}! Skipping alignment')
             else:
-                align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = "", logfile = logfile)
+                align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = "--maxiterate 1000 --localpair --quiet --reorder", logfile = logfile)
             if os.path.isfile(fname_tree):
                 print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
             else:

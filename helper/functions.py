@@ -5,7 +5,7 @@ import csv
 import argparse
 import logging
 import yaml
-
+import ete3
 
 
 #### Tool functions #####
@@ -39,6 +39,17 @@ def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode =
         subprocess.run(cmd, shell=True, check=True)
 
 # Phylogeny wrappers
+def get_node_support_range(treefile):
+    # Load the tree
+    #tree = Tree(treefile, format=1)  # format=1 assumes Newick with bootstrap values
+    tree = ete3.PhyloTree("%s" % (treefile))
+    # Collect support values from internal nodes
+
+    support_values = [node.support for node in tree.traverse() if not node.is_leaf() and node.support is not None]
+    min_support = min(support_values)
+    max_support = max(support_values)
+    return(min_support,max_support)
+
 def phylogeny(fasta_file,output_prefix,ntmax = 1,method = 'iqtree2'):
     if method == 'iqtree2':
         phylogeny_iqtree(fasta_file,output_prefix,ntmax = ntmax)
@@ -63,9 +74,15 @@ def phylogeny_fasttree(fasta_file, output_file):
     logging.info(f'Created {output_file}')
 
 
-def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG", possvm = 'submodules/possvm-orthology/possvm.py',logfile = '/dev/null'):
+def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG", possvm = 'submodules/possvm-orthology/possvm.py',logfile = '/dev/null',refsps = None,min_support_transfer = 50):
     logging.info(f"Possvm: {treefile}\nLog: {logfile}")
-    
+    # Adjust min_support according to the value range in provided tree 
+    print(min_support_transfer)
+    nsr = get_node_support_range(treefile)
+    if min_support_transfer:
+        if min_support_transfer > nsr[1]:
+            logging.info(f"Minimum node support ({min_support_transfer}) is bigger than the maximum observed support value ({nsr[1]}); Adjusting the threshold to {round(min_support_transfer/100)}") 
+            min_support_transfer = min_support_transfer / 100
     # get the location of the possvm submodule 
     scriptdir = os.path.dirname(os.path.abspath(__file__))
     possvm = scriptdir + '/../' + possvm
@@ -74,7 +91,12 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
         reference_names = f"-r {reference_names}"
     else:
         reference_names = ""
-    cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot 10 -i {treefile} {reference_names} >> {logfile} 2>&1"
+    
+    if refsps:
+        reference_species = f"-refsps {refsps}" 
+    else:
+        reference_species = ""
+    cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot 10 -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} >> {logfile} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
