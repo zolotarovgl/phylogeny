@@ -9,4 +9,8 @@
 - Clustering guided by representative sequence alignment and phylogeny
 - Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest
 - MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!
-- Think carefully how would you like to handle the clustering
+
+
+- phylosearch => blastology  
+- blastology: better handling of representative sequences  
+- slurm scripts to run blastology 
