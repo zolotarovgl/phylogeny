@@ -179,7 +179,7 @@ def blastology_run(args,logging,verbose = False):
     if not os.path.isfile(blastp_outfile) or force:
         if verbose:
             logging.info(f'BLASTP:\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\nOutput{blastp_outfile}')
-        blastp(query = args.query, target = args.target,db = temp_dir + "/target", outfile = blastp_outfile,ncpu = args.ncpu,logfile = blastp_log)
+        blastp(query = args.query, target = args.target,db = temp_dir + "/target", outfile = blastp_outfile,ncpu = args.ncpu,logfile = blastp_log, evalue=args.evalue,min_perc = args.min_perc)
     else:
         if verbose:
             logging.info(f'Found blastp output file {blastp_outfile}. Skipping')

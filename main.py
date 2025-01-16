@@ -141,6 +141,8 @@ if __name__ == "__main__":
     parser_blastology.add_argument('--force', required=False, default = True, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_blastology.add_argument('-t','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
     parser_blastology.add_argument('--cluster_prefix', required=False, default = 'HG', help='Prefix to use with sequence clusters. Default: "HG"')
+    parser_blastology.add_argument('--min_perc', required=False, default = None, help='Minimum sequence percentage identity for BLASTP hit filtering. Default [None]')
+    parser_blastology.add_argument('--evalue', required=False, default = "1e-5", help='BLAST E-value threshold. Default "1e-5"')
 
     args = parser.parse_args()
 

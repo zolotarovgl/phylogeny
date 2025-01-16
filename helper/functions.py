@@ -106,7 +106,7 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
 
 # Phylo-search functions 
 
-def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null'):
+def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null'):
     if not os.path.isfile(f'{db}.pdb'):
         cmd = f"makeblastdb -in {target} -dbtype prot -out {db} > {logfile}"
         logging.info(cmd)
@@ -114,9 +114,13 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",outfmt = "6 qseqid sse
     else:
         logging.info(f'Found db files {db}. Skipping db building')
     cmd = f'blastp -query {query} -out {outfile} -db {db} -evalue {evalue} -num_threads {ncpu} -outfmt "{outfmt}" >> {logfile} 2>&1'
-    #blastp -evalue 1e-5 -num_threads $NCPU -query $QUERY -db tmp/target -out search/${PREF}.blastp.tsv -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
+    if min_perc:
+        print(f'Minimum BLASTP hit percetage is set to {min_perc}. Filtering')
+        cmd = f"cat {outfile} | awk '$3>={min_perc}' > {outfile}.filtered; mv {outfile}.filtered {outfile}"
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
 
 
 def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = False):
