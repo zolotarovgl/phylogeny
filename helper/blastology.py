@@ -109,9 +109,10 @@ def parse_args(args):
 
     ncpu = args.ncpu
     mafft = args.mafft
+    phy_method = args.phymethod
     #globals().update(locals())
     #print(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi)
-    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft)
+    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method)
 
 def join_seqs(query,target,joint_fasta_fname,joint_ids_fname,blastp_outfile,verbose):
     cmd = f'cat {query} {target} > {joint_fasta_fname}_tmp; samtools faidx {joint_fasta_fname}_tmp'
@@ -155,8 +156,7 @@ def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force
             logging.info(f'Created {fname_possvm}')
 
 def blastology_run(args,logging,verbose = False):
-    query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft = parse_args(args)
-    phy_method = 'fasttree'
+    query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method = parse_args(args)
 
     # Directories
     # check the temporary directory status:
