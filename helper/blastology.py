@@ -19,7 +19,7 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
     import csv
     
     
-    query_ids_file = os.path.join(temp_dir,'query.ids') 
+    query_ids_file = os.path.join(temp_dir,f'{prefix}_query.ids') 
     functions.get_fasta_names(fasta_file = query,out_file = query_ids_file,verbose = verbose)
     #functions.filter_clusters(cluster_file = cluster_file )
     with open(query_ids_file, "r") as file:
@@ -129,6 +129,20 @@ def join_seqs(query,target,joint_fasta_fname,joint_ids_fname,blastp_outfile,verb
     subprocess.run(cmd, shell=True, check=True)
     logging.info('Done collecting BLASTP results')
 
+def get_results(cluster_directory,prefix,query_ids,soi = None,output_file = None,verbose = True):
+    if not output_file:
+        logging.error('Specify output file!!!')
+        quit()
+        
+    cmd = f'cat  {cluster_directory}/{prefix}*groups.csv | grep -f <(cat {cluster_directory}/{prefix}*groups.csv | grep -f {query_ids} | cut -f 2 | sort | uniq)'
+    if soi:
+        cmd = cmd + f' | grep {soi} > {output_file}'
+    else:
+        cmd = cmd + f' > {output_file}'
+    if verbose:
+        logging.info(cmd)
+    subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
+
 def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force,ncpu,verbose):
         input_file = os.path.join(cluster_directory,cl_id)
         cluster_fasta = os.path.join(cluster_directory,cl_id +  ".fasta")
@@ -157,7 +171,7 @@ def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force
 
 def blastology_run(args,logging,verbose = False):
     query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method = parse_args(args)
-
+    output_file = args.outputfile
     # Directories
     # check the temporary directory status:
     functions.check_dir(temp_dir,force = force)
@@ -205,3 +219,12 @@ def blastology_run(args,logging,verbose = False):
         run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,mafft_opt=mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
  
     # Finally, retrieve the true orthologs!
+    #if not args.outputfile:
+    #    logging.error('specify output file')
+    #    if not args.soi:
+    #        output_file = f'{prefix}_annotations.tsv'
+    #    else:
+    #        output_file = f'{prefix}_{soi}_annotations.tsv'
+
+    get_results(cluster_directory=cluster_directory,prefix = prefix,query_ids =  os.path.join(temp_dir,f'{prefix}_query.ids') ,soi = args.soi,output_file = output_file,verbose = verbose)
+    logging.info(f'Created {output_file}')

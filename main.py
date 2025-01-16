@@ -133,7 +133,8 @@ if __name__ == "__main__":
     parser_blastology.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use.')
 
     parser_blastology.add_argument('-p','--prefix', default = "search", required = False, help='Prefix to use for output files, e.g. [PREFIX].HG0.treefile. Default: search')
-    parser_blastology.add_argument('-o','--output_dir', default = "results", help='Output directory name.')
+    parser_blastology.add_argument('-o','--output_dir', default = "results", help='Output directory name.Default [results]')
+    parser_blastology.add_argument('--outputfile', required=True, default = None, help='Name of output file with annotations')
     parser_blastology.add_argument('-s','--soi', default = "", required = False, help='Prefix of the species of interest - e.g. "Mlei"')
     parser_blastology.add_argument('--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
     parser_blastology.add_argument('--phymethod', required=False, default = "iqtree2",  help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
