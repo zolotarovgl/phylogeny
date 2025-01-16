@@ -9,29 +9,32 @@ import ete3
 
 
 #### Tool functions #####
-def align(fasta_file, output_file, ncpu, mafft_opt):
-
-    logging.info(f"Aligning sequences with mafft")
+def align(fasta_file, output_file, ncpu, mafft_opt,verbose):
+    if verbose:
+        logging.info(f"Aligning sequences with mafft")
 
     cmd = (f"mafft --reorder --quiet --thread {ncpu} {mafft_opt} {fasta_file} > {output_file}")
-    logging.info(cmd)
+    if verbose:
+        logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
-    logging.info(f"Alignment done: {output_file}")
+    if verbose:
+        logging.info(f"Alignment done: {output_file}")
 
-def trim(input_file,output_file,mode = "kpic-gappy", g = "0.7",logfile = '/dev/null 2>&1'):
+def trim(input_file,output_file,mode = "kpic-gappy", g = "0.7",logfile = '/dev/null 2>&1',verbose = True):
     cmd = f"clipkit {input_file} -m {mode} -o {output_file} -g {g} > {logfile}"
-    logging.info(cmd)
+    if verbose:
+        logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
 
-def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode = "kpic-gappy",clipkit_g = 0.7, clean = True, logfile = '/dev/null'):
+def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode = "kpic-gappy",clipkit_g = 0.7, clean = True, logfile = '/dev/null',verbose = True):
     if not os.path.exists(input_file):
         logging.error(f"{input_file} doesn't exist")
         sys.exit(1)
     tmpfile = input_file + '.tmp'
     
-    align(input_file,tmpfile,ncpu = ncpu,mafft_opt = mafft_opt)
-    trim(tmpfile,output_file,mode = clipkit_mode,g = clipkit_g,logfile = logfile)
+    align(input_file,tmpfile,ncpu = ncpu,mafft_opt = mafft_opt,verbose = verbose)
+    trim(tmpfile,output_file,mode = clipkit_mode,g = clipkit_g,logfile = logfile,verbose = verbose)
 
     if clean:
         cmd = f"rm {tmpfile}"
@@ -81,7 +84,7 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
     nsr = get_node_support_range(treefile)
     if min_support_transfer:
         if min_support_transfer > nsr[1]:
-            logging.info(f"Minimum node support ({min_support_transfer}) is bigger than the maximum observed support value ({nsr[1]}); Adjusting the threshold to {round(min_support_transfer/100)}") 
+            logging.info(f"Minimum node support ({min_support_transfer}) is bigger than the maximum observed support value ({nsr[1]}); Adjusting the threshold to {round(min_support_transfer/100,2)}") 
             min_support_transfer = min_support_transfer / 100
     # get the location of the possvm submodule 
     scriptdir = os.path.dirname(os.path.abspath(__file__))
@@ -149,11 +152,26 @@ def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseq
         logging.info(f'Unknown clustering method {method}!')
         quit()
 
-def get_fasta_names(fasta_file,out_file):
+def get_fasta_names(fasta_file,out_file,verbose = False):
     cmd = f"grep '>' {fasta_file} | sed 's/>//g' | sort | uniq > {out_file}"
-    logging.info(cmd)
+    if verbose:
+        logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
+def check_tool(tool_name):
+    try:
+        # Try to run the tool with a harmless argument like --help
+        cmd = [tool_name, '--help']
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # If return code is 0, it means the tool executed successfully
+        if result.returncode == 0:
+            print(f"{tool_name} is available and can be launched.")
+        else:
+            print(f"Error: {tool_name} is not functioning properly.")
+            sys.exit(1)
+    except FileNotFoundError:
+        print(f"Error: {tool_name} is not available on your system.")
+        sys.exit(1)
 
 def check_dir(dirpath,force = False):
     if not os.path.exists(dirpath):
@@ -161,10 +179,8 @@ def check_dir(dirpath,force = False):
         print(f'Directory created: {dirpath}')
     else:
         if not force:
-            print(f'Error: {dirpath} already exists. Delete it or use --force!')
-            quit()
-        else:
-            print(f'Directory {dirpath} exists, but --force is set! Continuing ...')
+            print(f'Directory {dirpath} exists, but --force is not set! Continuing ...')
+            
 
 
 from Bio import SeqIO

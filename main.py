@@ -36,41 +36,6 @@ def load_config():
         config = yaml.safe_load(file)
     return config
 
-
-def check(tool_name):
-    try:
-        # Try to run the tool with a harmless argument like --help
-        cmd = [tool_name, '--help']
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # If return code is 0, it means the tool executed successfully
-        if result.returncode == 0:
-            print(f"{tool_name} is available and can be launched.")
-        else:
-            print(f"Error: {tool_name} is not functioning properly.")
-            sys.exit(1)
-    except FileNotFoundError:
-        print(f"Error: {tool_name} is not available on your system.")
-        sys.exit(1)
-
-
-
-#############################################################################################
-
-
-def run_easyphylo(fasta_file,ncpu):
-    logging.info(f"Easy-phylo: {fasta_file}")
-    quit()
-
-
-
-
-
-
-
-
-
-#############################################################################################
-
 # Pipelines # 
 
 def run_generax(hg_id):
@@ -149,33 +114,31 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('--method', default = "fasttree", help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
 
-    # PHYLO-SEARCH
-    parser_phylosearch = subparsers.add_parser('phylo-search',
+
+    # BLASTOLOGY - phylosearch v2
+    parser_blastology = subparsers.add_parser('blastology',
             help = 'Search query sequences in proteomes and annotate using phylogenies',
             description="""
     Annotate the proteins based on blastp search and focused phylogenies:
 
         1. Use BLASTP to search for the --query proteins in --target.
-        2. Cluster the hits using MMSEQS2 and filter the clusters 
+        2. Cluster the hits using diamond + MCL and filter the clusters 
             - should include any query sequence and, optionally a species of interest (--soi) sequence
-        3. For each cluster:
-            - align using MAFFT 
-            - trim the aligment using ClipKit 
-            - run phylogeny using IQTREE2
-            - parse the phylogeny using POSSVM 
+        3. For each cluster run the phylogeny
         4. Concatenate the annotations
     """, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser_phylosearch.add_argument('--query', required=True, help='Query fasta file containing sequences to search for.')
-    parser_phylosearch.add_argument('--target', required=True, help='Target fasta file - usually a collection of proteomes')
-    parser_phylosearch.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use.')
-    parser_phylosearch.add_argument('-p','--prefix', default = None, required = True, help='Prefix to use for all files and orthogroups.')
-    parser_phylosearch.add_argument('-o','--output_dir', default = "results", help='Output directory name.')
-    parser_phylosearch.add_argument('-s','--soi', default = "", required = False, help='Prefix of the species of interest - e.g. "Mlei"')
-    parser_phylosearch.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
-    parser_phylosearch.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
-    parser_phylosearch.add_argument('--force', required=False, default = False, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
-    parser_phylosearch.add_argument('-t','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
-    parser_phylosearch.add_argument('--cluster_prefix', required=False, default = 'HG', help='Prefix to use with sequence clusters. Default: "HG"')
+    parser_blastology.add_argument('--query', required=True, help='Query fasta file containing sequences to search for.')
+    parser_blastology.add_argument('--target', required=True, help='Target fasta file - usually a collection of proteomes')
+    parser_blastology.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use.')
+
+    parser_blastology.add_argument('-p','--prefix', default = "search", required = False, help='Prefix to use for output files, e.g. [PREFIX].HG0.treefile. Default: search')
+    parser_blastology.add_argument('-o','--output_dir', default = "results", help='Output directory name.')
+    parser_blastology.add_argument('-s','--soi', default = "", required = False, help='Prefix of the species of interest - e.g. "Mlei"')
+    parser_blastology.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
+    parser_blastology.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
+    parser_blastology.add_argument('--force', required=False, default = False, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
+    parser_blastology.add_argument('-t','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
+    parser_blastology.add_argument('--cluster_prefix', required=False, default = 'HG', help='Prefix to use with sequence clusters. Default: "HG"')
 
     args = parser.parse_args()
 
@@ -205,8 +168,8 @@ if __name__ == "__main__":
         logging.info("Command: Cluster")
         clustering_method = 'diamond_mcl'
         
-        #check('diamond')
-        #check('mcl')
+        functions.check_tool('diamond')
+        functions.check_tool('mcl')
         
         infasta = args.fasta
         temp_dir = 'tmp/'
@@ -267,8 +230,8 @@ if __name__ == "__main__":
 
     elif args.command == 'align':
         logging.info("Command: Align")
-        #check('mafft')
-        #check('clipkit')
+        functions.check_tool('mafft')
+        functions.check_tool('clipkit')
         align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft)
 
     elif args.command == 'phylogeny':
@@ -287,7 +250,7 @@ if __name__ == "__main__":
         #    logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
         possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix, refsps = args.refsps, min_support_transfer = min_support_transfer)
 
-    elif args.command == 'easy-phylo' or args.command == 'blastology':
+    elif args.command == 'easy-phylo':
         logging.info('Easy-phylo')
         fname_aln = os.path.splitext(args.fasta)[0] + '.aln'
         tree_prefix = os.path.splitext(args.fasta)[0] + '.tree'
@@ -308,180 +271,9 @@ if __name__ == "__main__":
         print('Easy-phylo done!')
 
     elif args.command == 'phylo-search':
-        logging.info(f"Phylo-search\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\n Prefix: {args.prefix}\n Species of interest: {args.soi}\n Mafft: {args.mafft}\n Reference names: {args.refnames}")
-        
-        min_n = 3 # minimal number of sequences in the cluster
-        cluster_prefix = args.prefix + '.' + args.cluster_prefix # a prefix to add to the cluster 
-        output_directory = args.output_dir
-        cluster_directory = os.path.join(output_directory,'clusters')
-        
-        query = args.query
-        target = args.target
-        temp_dir = args.temp_dir
-        prefix = args.prefix
-        soi = args.soi
-        force = args.force
-        refnames_file = args.refnames
-        ncpu = args.ncpu
-
-        # Directories
-        # check the temporary directory status:
-        functions.check_dir(temp_dir,force = force)
-        functions.check_dir(output_directory,force = force)
-        functions.check_dir(cluster_directory,force = force)
-        # Intermediate files 
-        blastp_outfile = os.path.join(temp_dir,f'{prefix}.blastp.tsv')
-        cluster_file = os.path.join(temp_dir,f'{prefix}_cluster.tsv')
-        
-        joint_fasta_fname = os.path.join(temp_dir, f"{prefix}.fasta")
-        joint_ids_fname = os.path.join(temp_dir, f"{prefix}.hits.ids")
-      
-        blastp_log = os.path.join(temp_dir, 'blastp.log')
-        cluster_log = os.path.join(temp_dir,'cluster.log')
-        # Intermediate files check
-        if not os.path.isfile(blastp_outfile):
-            logging.info(f'Phylo-search:BLASTP:\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\nOutput{blastp_outfile}')
-            blastp(query = args.query, target = args.target,db = temp_dir + "/target", outfile = blastp_outfile,ncpu = args.ncpu,logfile = blastp_log)
-        else:
-            logging.info(f'Found blastp output file {blastp_outfile}. Skipping')
-   
-        # Gather the results and prepare for clustering 
-        cmd = f'cat {query} {target} > {joint_fasta_fname}_tmp; samtools faidx {joint_fasta_fname}_tmp'
-        logging.info(cmd)
-        subprocess.run(cmd, shell=True, check=True)
-        cmd = f"cat {blastp_outfile} | awk '{{print $1\"\\n\"$2}}' | sort | uniq > {joint_ids_fname}"
-        logging.info(cmd)
-        subprocess.run(cmd, shell=True, check=True)
-        cmd = f'xargs samtools faidx {joint_fasta_fname}_tmp < {joint_ids_fname} > {joint_fasta_fname};rm {joint_fasta_fname}_tmp'
-        logging.info(cmd)
-        subprocess.run(cmd, shell=True, check=True)
-
-        # Clustering and cluster filtering 
-        if os.path.isfile(cluster_file):
-            logging.info(f'Found clustering file {cluster_file}. Skipping')
-        else:
-            clustering_method = 'diamond_mcl' 
-            cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method)
-
-        # Cluster filtering
-        query_ids_file = os.path.join(temp_dir,'query.ids') 
-        functions.get_fasta_names(fasta_file = query,out_file = query_ids_file)
-        #functions.filter_clusters(cluster_file = cluster_file )
-        with open(query_ids_file, "r") as file:
-            query_ids = [line.strip() for line in file]
-
-#############################################################
-# Cluster filtering 
-#############################################################
-        import csv
-        clusters = {}
-        with open(cluster_file, "r") as file:
-            reader = csv.reader(file, delimiter="\t")
-            for cluster_name, sequence_name in reader:
-                clusters.setdefault(cluster_name, []).append(sequence_name)
-
-        logging.info(f'Cluster filtering: {cluster_file}')
-        logging.info(f'N query sequences: {len(query_ids)}')
-        logging.info(f'N clusters: {len(clusters)}')
-        
-        # report
-        clusters_query = [k for k,v in clusters.items() if any(elem in query_ids for elem in v)]
-        clusters_small = [k for k,v in clusters.items() if len(v) < min_n]
-        clusters_soi = [k for k,v in clusters.items() if any(soi in elem for elem in v)]
-        clusters_query_small = [x for x in clusters_query if len(clusters[x]) < min_n]
-        clusters_soi_small = [x for x in clusters_soi if len(clusters[x]) < min_n]
-        logging.info(f'Clusters with query: {len(clusters_query)}')
-        logging.info(f'Clusters with soi: {len(clusters_soi)}')
-        logging.info(f'Clusters small: {len(clusters_small)}')
-        logging.info(f'Clusters with query & small: {len(clusters_query_small)}')
-        logging.info(f'Clusters with SOI & small: {len(clusters_soi_small)}')
-        
-        # Filter by query sequences
-        clusters_filt = [k for k,v in clusters.items() if any(elem in query_ids for elem in v) and len(v) >= min_n]
-        cluters_filt = [x for x in clusters_filt if any(soi in elem for elem in clusters[x])]
-        clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
-#CAVE:   # any small clusters with SOI sequences?
-        #clusters_small_soi = [k for k,v in clusters.items() if any(soi in elem for elem in v) and any(elem in query_ids for elem in v) and len(v) < min_n]
-        #if len(clusters_small_soi) > 0:
-        #    logging.info(f'Warning: found {len(clusters_small_soi)} clusters with {soi} and query sequences but small size (<= {min_n} sequences)!\nConsider chaning the clustering method') 
-
-        logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters passing filtering.')
-        clusters = clusters_filt_d
-        
-        require_soi = True
-        if require_soi:
-            if not soi == "":
-                logging.info('Filtering by species of interest {soi}')
-                clusters_filt = [k for k,v in clusters.items() if any(soi in elem  for elem in v)]
-                logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters with SOI ({soi}) sequences.')
-                clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
-                clusters = clusters_filt_d
-
-        # rename each cluster and store the sequences 
-        clusters_renamed = {}
-        for i,(k,v) in enumerate(clusters.items()):
-            clusters_renamed.update({cluster_prefix+str(i):v})
-
-        # if provided the refnames, read in and store for each cluster 
-        if refnames_file: 
-            refnames = {}
-            with open(refnames_file, "r") as file:
-                reader = csv.reader(file, delimiter="\t")
-                for key, value in reader:
-                    refnames[key] = value
-            cl_to_refname = {}
-            for k,v in clusters_renamed.items():
-                cl_to_refname.update({k:",".join(sorted([refnames[x] for x in v if x in refnames.keys()]))})
-        
-        # write down the filtered clustering file 
-        cluster_tabfile = os.path.join(output_directory,prefix + '.clusters.tsv')
-        with open(cluster_tabfile, "w") as file:
-            for k,v in clusters_renamed.items():
-                if refnames_file:
-                    file.write(k + "\t" + ",".join(v) + "\t" + cl_to_refname[k] + "\n")
-                else:
-                    file.write(k + "\t" + ",".join(v) +  "\n")
-        logging.info(f'Created: {cluster_tabfile}')
-        
-        # For each cluster, create a separate file:
-        for cl_id in clusters_renamed.keys():
-            fasta_file = joint_fasta_fname
-            ids_to_keep = clusters_renamed[cl_id]  # Replace with your list of IDs
-            cluster_fasta = cluster_directory + "/" + cl_id +  ".fasta"
-            functions.retrive_sequences(joint_fasta_fname, cluster_fasta, ids_to_keep)
-# Add cluster information / metadata 
-
-# CAVE: replace with easy-phylo call? 
-        # Cluster alignment and phylogeny 
-        for cl_id in clusters_renamed.keys():
-            cluster_fasta = os.path.join(cluster_directory,cl_id +  ".fasta")
-
-            fname_aln = os.path.splitext(cluster_fasta)[0] + '.aln'
-            tree_prefix = os.path.splitext(cluster_fasta)[0] + '.tree'
-            fname_tree = tree_prefix + ".treefile"
-            logfile = os.path.join(cluster_directory,cl_id + '.log')
-
-            if os.path.isfile(fname_aln):
-                print(f'Found alignment file: {fname_aln}! Skipping alignment')
-            else:
-                align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = "--maxiterate 1000 --localpair --quiet --reorder", logfile = logfile)
-            if os.path.isfile(fname_tree):
-                print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
-            else:
-                #functions.phylogeny_fasttree(fasta_file = fname_aln, output_file = fname_tree)
-                phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = ncpu)
-
-
-            ogprefix = cl_id + "."
-
-            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = ogprefix,logfile = logfile)
-        # concatenate annotation files 
-        os.makedirs('results',exist_ok = True)
-        anno_files = [os.path.join(cluster_directory, file) for file in os.listdir(cluster_directory) if 'ortholog_groups.csv' in file]
-
-        anno_outfile = '%s/%s.annotation.tsv' % (output_directory,prefix)
-        cmd = 'cat %s | grep -v orthogroup > %s' % (" ".join(anno_files),anno_outfile)
-        #logging.info(cmd)
-        subprocess.run(cmd, shell=True, check=True)
-        logging.info(f'Done! Annotations stored in {anno_outfile}')
-         
+        raise(NotImplementedError("Use blastology command!"))
+    
+    elif args.command == 'blastology':
+        logging.info('BLASTology')
+        from helper import blastology 
+        blastology.blastology_run(args,logging, verbose = True)

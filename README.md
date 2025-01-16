@@ -18,18 +18,12 @@ Main outputs:
 - `bet.Insulin.seqs.fasta` - full protein sequences  
 
 
+# BLASTOLOGY  
+
+Use the reference sequences for search. For instance, given the reference sequences stored in `data/arp23.fasta`, search `data/sample.fasta`
 
 ```bash
-###########
-mkdir -p results_annotation/alignments
-python main.py align -f results_annotation/searches/myo.Myosin.domains.fasta -o results_annotation/alignments/test.aln -c 10
-mkdir -p results_annotation/gene_trees
-python main.py phylogeny -f results_annotation/alignments/test.aln -o results_annotation/gene_trees/test -c 15
-
-
-# search the proteomes and annotate the hits
-python main.py phylo-search --query example/rho_cdc42.fasta --target example/Mlei.fasta -c 3 -o test -p x
-
-
-python main.py phylo-search --query Hsap_Myosin.fasta --target example/proteomes.fasta -c 15 -o results -s Mlei -r Hsap_gene_names.csv -p boo
+python main.py blastology --query data/arp23.fasta --target data/sample.fasta -c 10 -p boo --force -r data/arp23.names
 ```
+
+*TODO*: add reference sequence renaming!
