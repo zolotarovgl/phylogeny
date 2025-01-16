@@ -127,7 +127,7 @@ def join_seqs(query,target,joint_fasta_fname,joint_ids_fname,blastp_outfile,verb
     subprocess.run(cmd, shell=True, check=True)
     logging.info('Done collecting BLASTP results')
 
-def run_cluster(cl_id,cluster_directory,refnames_file,phy_method,force,ncpu,verbose):
+def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force,ncpu,verbose):
         input_file = os.path.join(cluster_directory,cl_id)
         cluster_fasta = os.path.join(cluster_directory,cl_id +  ".fasta")
 
@@ -140,7 +140,7 @@ def run_cluster(cl_id,cluster_directory,refnames_file,phy_method,force,ncpu,verb
         if os.path.isfile(fname_aln) and not force:
             print(f'Found alignment file: {fname_aln}! Skipping alignment')
         else:
-            align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = "--maxiterate 1000 --localpair --quiet --reorder", logfile = logfile,verbose = verbose)
+            align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = mafft_opt, logfile = logfile,verbose = verbose)
         if os.path.isfile(fname_tree) and not force:
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
@@ -201,6 +201,6 @@ def blastology_run(args,logging,verbose = False):
     
     # Now, for each cluster, run the easy-phylo
     for cl_id in cluster_prefs:
-        run_cluster(cl_id,cluster_directory,refnames_file,phy_method,force,ncpu,verbose)
+        run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,mafft_opt=args.mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
  
     # Finally, retrieve the true orthologs!
