@@ -137,7 +137,7 @@ if __name__ == "__main__":
     parser_blastology.add_argument('-s','--soi', default = "", required = False, help='Prefix of the species of interest - e.g. "Mlei"')
     parser_blastology.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
     parser_blastology.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
-    parser_blastology.add_argument('--force', required=False, default = False, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
+    parser_blastology.add_argument('--force', required=False, default = True, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_blastology.add_argument('-t','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
     parser_blastology.add_argument('--cluster_prefix', required=False, default = 'HG', help='Prefix to use with sequence clusters. Default: "HG"')
 
