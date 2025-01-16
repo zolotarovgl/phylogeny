@@ -174,7 +174,7 @@ def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expa
                 for file in file_list:
                     try:
                         os.remove(file)
-                        print(f"Removed: {file}")
+                        #print(f"Removed: {file}")
                     except FileNotFoundError:
                         print(f"File not found: {file}")
                     except PermissionError:
@@ -199,7 +199,7 @@ def parse_gene_family_info(gene_family_info):
             }
     return gene_families
 
-def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_db, config, domain_expand = 50,verbose = 1, do_clean = True):
+def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_db, hmm_dir,ncpu, domain_expand = 50,verbose = 1, do_clean = True):
     logging.info(f"# {fasta_file}: {gene_family_name} | HMM search")
     gene_families = parse_gene_family_info(gene_family_info)
    # if verbose: 
@@ -212,8 +212,9 @@ def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_d
     prefix = gene_family["pref2"]
     hmms = gene_family["hmms"]
     threshold = gene_family["threshold"]
-    cpu = config.get("cpu", 4)
-    hmm_dir = config["hmm_dir"]
+    
+    cpu = ncpu
+    hmm_dir = hmm_dir
     domain_expand = int(domain_expand)
 
     searches_dir = output_dir
@@ -242,4 +243,5 @@ def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_d
         logging.info(f"# {fasta_file}: {gene_family_name} | Omit downstream analyses")
     else:
         merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand,verbose = verbose, do_clean = do_clean)
+    logging.info(f'Hmmsearch done: {output_dir}/')
 

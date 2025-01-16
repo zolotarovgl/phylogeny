@@ -1,3 +1,4 @@
 helper/__pycache__/*
-data/hmms/
 tmp/
+hmms/
+results/

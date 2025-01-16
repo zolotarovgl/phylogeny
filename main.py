@@ -64,6 +64,7 @@ if __name__ == "__main__":
     parser_search.add_argument('--hmm_dir',required=False, default = None, help='HMM directory')
     parser_search.add_argument('--pfam_db',required=False, default = None, help='Path to Pfam-A.hmm file. Default: None')
     parser_search.add_argument('--domain_expand',required=False, default = "50", help='Expand domain ranges to X aminoacids in both directions. Default: 50')
+    parser_search.add_argument('-c', '--ncpu', required=False, default = int(1),  help='Number of CPU cores to use')
     
     # Cluster
     parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
@@ -148,7 +149,6 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit(1)  # Exit with a non-zero code to indicate an error
 
-    config = load_config()
 
     if args.command == 'hmmsearch':
         logging.info("Command: Search")
@@ -156,13 +156,12 @@ if __name__ == "__main__":
             logging.info(f'HMM directory specified: {args.hmm_dir}')
             hmm_dir = args.hmm_dir
         else:
-            logging.info(f'No HMM directory specified. Checking config.yaml ...')
-            hmm_dir = config['hmm_dir']
-            logging.info(f'HMM directory from config.yaml: {hmm_dir}')
+            logging.error(f'No HMM directory specified. Setting to hmms/')
+            hmm_dir = "hmms"
         
-        pfam_db = args.pfam_db
         domain_expand = int(args.domain_expand) 
-        hmmsearch(args.fasta, args.gene_family_info, args.gene_family_name, args.output_dir, pfam_db,config = config, domain_expand = domain_expand, verbose = verbose)
+        hmmsearch(fasta_file = args.fasta, gene_family_info = args.gene_family_info, gene_family_name=args.gene_family_name, output_dir=args.output_dir, pfam_db=args.pfam_db,hmm_dir=hmm_dir, ncpu = int(args.ncpu),
+                   domain_expand = domain_expand, verbose = verbose)
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")

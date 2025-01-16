@@ -1,4 +1,3 @@
-- remove config
 - simplify gene family file
 - add more possvm options
 - cluster stats output
