@@ -27,7 +27,10 @@ Main outputs:
 Use the reference sequences for search. For instance, given the reference sequences stored in `data/arp23.fasta`, search `data/sample.fasta`
 
 ```bash
-python main.py blastology --query data/arp23.fasta --target data/sample.fasta -c 10 -p boo --force -r data/arp23.names
+python main.py blastology --query data/arp23.fasta --target data/sample.fasta -c 10 --force -r data/arp23.names
 ```
+
+The tool will use BLASTP to search, then it will cluster the sequences with MCL&diamond and run the phylogeny for each cluster. 
+Finally, it will parse the resulting trees and will output the best orthologs for the queries.  
 
 *TODO*: add reference sequence renaming!
