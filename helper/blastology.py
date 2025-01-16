@@ -177,7 +177,7 @@ def blastology_run(args,logging,verbose = False):
     # BLASTP
     if not os.path.isfile(blastp_outfile) or force:
         if verbose:
-            logging.info(f'Phylo-search:BLASTP:\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\nOutput{blastp_outfile}')
+            logging.info(f'BLASTP:\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\nOutput{blastp_outfile}')
         blastp(query = args.query, target = args.target,db = temp_dir + "/target", outfile = blastp_outfile,ncpu = args.ncpu,logfile = blastp_log)
     else:
         if verbose:

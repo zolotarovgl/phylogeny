@@ -11,7 +11,8 @@ import ete3
 #### Tool functions #####
 def align(fasta_file, output_file, ncpu, mafft_opt,verbose):
     if verbose:
-        logging.info(f"Aligning sequences with mafft")
+        n  = count_seqs(fasta_file,verbose)
+        logging.info(f"Aligning {n} sequences with mafft")
 
     cmd = (f"mafft --reorder --quiet --thread {ncpu} {mafft_opt} {fasta_file} > {output_file}")
     if verbose:
@@ -151,6 +152,13 @@ def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseq
     else:
         logging.info(f'Unknown clustering method {method}!')
         quit()
+
+def count_seqs(fasta_file, verbose=False):
+    cmd = f"grep -c '>' {fasta_file}"
+    if verbose:
+        print(f"Running command: {cmd}")
+    result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+    return int(result.stdout.strip())
 
 def get_fasta_names(fasta_file,out_file,verbose = False):
     cmd = f"grep '>' {fasta_file} | sed 's/>//g' | sort | uniq > {out_file}"
