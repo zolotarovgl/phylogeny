@@ -26,7 +26,7 @@ Main outputs:
 The tool will use BLASTP to search, then it will cluster the sequences with MCL&diamond and run the phylogeny for each cluster. 
 Finally, it will parse the resulting trees and will output the best orthologs for the queries.  
 
-Use the reference sequences for search. For instance, given the reference sequences stored in `data/BCL2.fasta`, search `data/sample.fasta` for homologs in species `Owefus`:
+Use the reference sequences for search. For instance, given the reference sequences stored in `data/BCL2.fasta`, search `data/sample.fasta` for homologs in species `Owefus` using 10 cores:  
 ```bash
 python main.py blastology --query data/BCL2.fasta -r data/BCL2.names  --target data/sample.fasta -c 10 --force --soi Owefus --outputfile Owenia_bcl2.tab
 ```
@@ -48,7 +48,4 @@ Dmel_QUERY_Q7KM33       dmelBCL2
 ```
 The names (2nd column) can be any, but try to keep them distinguishable!  
 
-
-
-
-*TODO*: add reference sequence renaming!
+**TODO**: add species prefix check - strict and not. Request that all the reference species are present in the target file.
