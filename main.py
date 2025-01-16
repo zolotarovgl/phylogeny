@@ -136,7 +136,7 @@ if __name__ == "__main__":
     parser_blastology.add_argument('-o','--output_dir', default = "results", help='Output directory name.')
     parser_blastology.add_argument('-s','--soi', default = "", required = False, help='Prefix of the species of interest - e.g. "Mlei"')
     parser_blastology.add_argument('--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
-    parser_phylogeny.add_argument('--phymethod', required=False, default = "iqtree2",  help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
+    parser_blastology.add_argument('--phymethod', required=False, default = "iqtree2",  help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
     parser_blastology.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_blastology.add_argument('--force', required=False, default = True, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_blastology.add_argument('-t','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
