@@ -108,9 +108,10 @@ def parse_args(args):
     refnames_file = args.refnames
 
     ncpu = args.ncpu
+    mafft = args.mafft
     #globals().update(locals())
     #print(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi)
-    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi)
+    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft)
 
 def join_seqs(query,target,joint_fasta_fname,joint_ids_fname,blastp_outfile,verbose):
     cmd = f'cat {query} {target} > {joint_fasta_fname}_tmp; samtools faidx {joint_fasta_fname}_tmp'
@@ -154,7 +155,7 @@ def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force
             logging.info(f'Created {fname_possvm}')
 
 def blastology_run(args,logging,verbose = False):
-    query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi = parse_args(args)
+    query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft = parse_args(args)
     phy_method = 'fasttree'
 
     # Directories
@@ -201,6 +202,6 @@ def blastology_run(args,logging,verbose = False):
     
     # Now, for each cluster, run the easy-phylo
     for cl_id in cluster_prefs:
-        run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,mafft_opt=args.mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
+        run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,mafft_opt=mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
  
     # Finally, retrieve the true orthologs!
