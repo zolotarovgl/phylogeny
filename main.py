@@ -24,8 +24,11 @@ except ImportError:
     raise ImportError("PyYAML is not installed. Install it using 'pip install pyyaml'.")
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 def load_config():
     config_file = "config.yaml"
     tool_directory = os.path.dirname(os.path.abspath(__file__))

@@ -1,10 +1,7 @@
-import sys
 import os
 import subprocess
 import csv
-import argparse
 import logging
-import yaml
 from helper import functions 
 
 
@@ -15,10 +12,7 @@ from helper.functions import blastp
 from helper.functions import cluster
 
 def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_file,cluster_prefix,output_directory,prefix,joint_fasta_fname,cluster_directory,verbose = False):
-    logging.info('Cluster filtering')
-    import csv
-    
-    
+    logging.info('Cluster filtering')    
     query_ids_file = os.path.join(temp_dir,f'{prefix}_query.ids') 
     functions.get_fasta_names(fasta_file = query,out_file = query_ids_file,verbose = verbose)
     #functions.filter_clusters(cluster_file = cluster_file )
@@ -31,14 +25,16 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
         for cluster_name, sequence_name in reader:
             clusters.setdefault(cluster_name, []).append(sequence_name)
 
-    logging.info(f'Cluster filtering: {cluster_file} \nN query sequences: {len(query_ids)}\nN clusters: {len(clusters)}')
     # report
     clusters_query = [k for k,v in clusters.items() if any(elem in query_ids for elem in v)]
     clusters_small = [k for k,v in clusters.items() if len(v) < min_n]
     clusters_soi = [k for k,v in clusters.items() if any(soi in elem for elem in v)]
     clusters_query_small = [x for x in clusters_query if len(clusters[x]) < min_n]
     clusters_soi_small = [x for x in clusters_soi if len(clusters[x]) < min_n]
-    logging.info(f'\nClusters with query: {len(clusters_query)}\nClusters with soi: {len(clusters_soi)}\nClusters small: {len(clusters_small)}\nClusters with query & small: {len(clusters_query_small)}\nClusters with SOI & small: {len(clusters_soi_small)}')
+
+    cluster_report = f'@N query sequences: {len(query_ids)}\n@Minimum cluster size allowed: {min_n}\n@Species of interest (SOI): {soi}\n\n@N clusters: {len(clusters)}\n@Clusters with query: {len(clusters_query)}\n@Clusters with SOI: {len(clusters_soi)}\n@Clusters small: {len(clusters_small)}\n@Clusters with query & small: {len(clusters_query_small)}\n@Clusters with SOI & small: {len(clusters_soi_small)}\n'
+    cluster_report = cluster_report.replace('@',"\t\t\t     ")
+    logging.info('Cluster filtering: \n' + cluster_report)
 
 
     # Filter by query sequences
@@ -46,16 +42,19 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
     cluters_filt = [x for x in clusters_filt if any(soi in elem for elem in clusters[x])]
     clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
 
-    logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters passing filtering.')
+    logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters with queries passing size filtering.')
     clusters = clusters_filt_d
     
     if require_soi:
         if not soi == "":
-            logging.info('Filtering by species of interest {soi}')
+            #logging.info(f'Filtering by species of interest {soi}')
             clusters_filt = [k for k,v in clusters.items() if any(soi in elem  for elem in v)]
             logging.info(f'{len(clusters_filt)}/{len(clusters)} clusters with SOI ({soi}) sequences.')
             clusters_filt_d = {k:v for k,v in clusters.items() if k in clusters_filt}
             clusters = clusters_filt_d
+            if len(clusters_filt)==0:
+                logging.error(f'No clusters containing the species of interest (--soi) {soi}. Aborting ...')          
+                quit()
 
     # rename each cluster and store the sequences 
     clusters_renamed = {}
@@ -133,17 +132,16 @@ def get_results(cluster_directory,prefix,query_ids,soi = None,output_file = None
     if not output_file:
         logging.error('Specify output file!!!')
         quit()
-        
     cmd = f'cat  {cluster_directory}/{prefix}*groups.csv | grep -f <(cat {cluster_directory}/{prefix}*groups.csv | grep -f {query_ids} | cut -f 2 | sort | uniq)'
     if soi:
         cmd = cmd + f' | grep {soi} > {output_file}'
     else:
         cmd = cmd + f' > {output_file}'
-    if verbose:
+    if verbose > 1:
         logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
 
-def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force,ncpu,verbose):
+def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefix = None,mafft_opt = None,phy_method = 'fasttree',force = True,ncpu = 1,verbose = False):
         input_file = os.path.join(cluster_directory,cl_id)
         cluster_fasta = os.path.join(cluster_directory,cl_id +  ".fasta")
 
@@ -155,24 +153,26 @@ def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force
         logfile = os.path.join(cluster_directory,cl_id + '.log')
         
         if os.path.isfile(fname_aln) and not force:
-            print(f'Found alignment file: {fname_aln}! Skipping alignment')
+            logging.info(f'Found alignment file: {fname_aln}! Skipping alignment')
         else:
             align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = mafft_opt, logfile = logfile,verbose = verbose)
         if os.path.isfile(fname_tree) and not force:
-            print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
+            logging.info(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
             #functions.phylogeny_fasttree(fasta_file = fname_aln, output_file = fname_tree)
-            phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = ncpu,method = phy_method)
+            phylogeny(fasta_file = fname_aln, output_file = fname_tree,ntmax = ncpu,method = phy_method)
 
         if os.path.isfile(fname_possvm) and not force:
-            print(f'Found POSSVM file: {fname_tree}! Skipping')
+            logging.info(f'Found POSSVM file: {fname_tree}! Skipping')
         else:
-            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = "OG",min_support_transfer = 50)
+            og_pref = f'{prefix}.OG' if prefix else 'OG'
+            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = og_pref,min_support_transfer = 50)
             logging.info(f'Created {fname_possvm}')
 
 def blastology_run(args,logging,verbose = False):
     query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method = parse_args(args)
     output_file = args.outputfile
+    prefix = args.prefix
     # Directories
     # check the temporary directory status:
     functions.check_dir(temp_dir,force = force)
@@ -192,9 +192,9 @@ def blastology_run(args,logging,verbose = False):
     
     # BLASTP
     if not os.path.isfile(blastp_outfile) or force:
-        if verbose:
-            logging.info(f'BLASTP:\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\nOutput{blastp_outfile}')
-        blastp(query = args.query, target = args.target,db = temp_dir + "/target", outfile = blastp_outfile,ncpu = args.ncpu,logfile = blastp_log, evalue=args.evalue,min_perc = args.min_perc)
+        #if verbose:
+            #logging.info(f'BLASTP:\n Query: {args.query}\n Target: {args.target}\n Threads: {args.ncpu}\nOutput{blastp_outfile}')
+        blastp(query = args.query, target = args.target,db = temp_dir + "/target", outfile = blastp_outfile,ncpu = args.ncpu,logfile = blastp_log, evalue=args.evalue,min_perc = args.min_perc,verbose = verbose)
     else:
         if verbose:
             logging.info(f'Found blastp output file {blastp_outfile}. Skipping')
@@ -217,8 +217,8 @@ def blastology_run(args,logging,verbose = False):
     
     # Now, for each cluster, run the easy-phylo
     for cl_id in cluster_prefs:
-        run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,mafft_opt=mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
- 
+        run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,prefix = prefix,mafft_opt=mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
+
     # Finally, retrieve the true orthologs!
     #if not args.outputfile:
     #    logging.error('specify output file')

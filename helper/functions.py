@@ -39,7 +39,7 @@ def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode =
 
     if clean:
         cmd = f"rm {tmpfile}"
-        logging.info(cmd)
+        #logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
 
 # Phylogeny wrappers
@@ -54,21 +54,42 @@ def get_node_support_range(treefile):
     max_support = max(support_values)
     return(min_support,max_support)
 
-def phylogeny(fasta_file,output_prefix,ntmax = 1,method = 'iqtree2'):
+def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree2'):
     if method == 'iqtree2':
-        phylogeny_iqtree(fasta_file,output_prefix,ntmax = ntmax)
+        phylogeny_iqtree(fasta_file,output_file,ntmax = ntmax)
     elif method == 'fasttree':
-        outfile = output_prefix + ".treefile"
-        phylogeny_fasttree(fasta_file,outfile)
+        #outfile = output_prefix + ".treefile"
+        phylogeny_fasttree(fasta_file,output_file)
+    if not os.path.isfile(output_file):
+        logging.error('Phylogeny has failed. Can not find {output_file}! Aborting ...')
+        quit()
 
-def phylogeny_iqtree(fasta_file, output_prefix, cptime = 5000, nstop = 50, nm = 500, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null'):
+def phylogeny_iqtree(fasta_file, output_file, cptime = 5000, nstop = 50, nm = 500, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
     # Main output: {output_prefix}.treeflie
     # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
-    logging.info(f"Phylogeny: {fasta_file} {output_prefix}")
+
+    # iqtree creates the files given a prefix {PREFIX}.treefile 
+    # If the output file name provided and ends in .tree - use as a prefix 
+    logging.info(f"Phylogeny: {fasta_file} {output_file}")
+    print(output_file)
+    if output_file.endswith('.treefile'):
+        output_prefix = output_file.replace('.treefile','')
+        if verbose:
+            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
+    elif output_file.endswith('.tree'):
+        output_prefix = output_file.replace('.tree','')
+        if verbose:
+            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
+    else:
+        output_prefix = output_file
+        if verbose:
+            logging.info(f"IQTREE2: output prefix: {output_prefix}")
     cmd = f"{iqtree2} -s {fasta_file} -m TEST -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -pre {output_prefix} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
-    logging.info(f'Created {output_prefix}.treefile')
+    #logging.info(f'IQTREE2: Created {output_prefix}.treefile')
+    cmd = f"mv {output_prefix}.treefile {output_file}"
+    subprocess.run(cmd, shell=True, check=True)
 
 def phylogeny_fasttree(fasta_file, output_file):
     logging.info(f"Phylogeny: {fasta_file} {output_file}")
@@ -106,10 +127,11 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
 
 # Phylo-search functions 
 
-def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null'):
+def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null',verbose = False):
     if not os.path.isfile(f'{db}.pdb'):
         cmd = f"makeblastdb -in {target} -dbtype prot -out {db} > {logfile}"
-        logging.info(cmd)
+        if verbose:
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
     else:
         logging.info(f'Found db files {db}. Skipping db building')
@@ -117,9 +139,10 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     if min_perc:
-        print(f'Minimum BLASTP hit percetage is set to {min_perc}. Filtering')
+        logging.info(f'Minimum BLASTP hit percetage is set to {min_perc}. Filtering')
         cmd = f"cat {outfile} | awk '$3>={min_perc}' > {outfile}.filtered; mv {outfile}.filtered {outfile}"
-        logging.info(cmd)
+        if verbose:
+            logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
 
 
@@ -162,14 +185,14 @@ def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseq
 
 def count_seqs(fasta_file, verbose=False):
     cmd = f"grep -c '>' {fasta_file}"
-    if verbose:
-        print(f"Running command: {cmd}")
+    if verbose > 1:
+        logging.info(cmd)
     result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
     return int(result.stdout.strip())
 
 def get_fasta_names(fasta_file,out_file,verbose = False):
     cmd = f"grep '>' {fasta_file} | sed 's/>//g' | sort | uniq > {out_file}"
-    if verbose:
+    if verbose > 1:
         logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
@@ -191,7 +214,7 @@ def check_tool(tool_name):
 def check_dir(dirpath,force = False):
     if not os.path.exists(dirpath):
         os.makedirs(dirpath)
-        print(f'Directory created: {dirpath}')
+        logging.info(f'Directory created: {dirpath}')
     else:
         if not force:
             print(f'Directory {dirpath} exists, but --force is not set! Continuing ...')
@@ -204,7 +227,7 @@ def retrive_sequences(input_fasta,output_fasta,ids_to_keep):
          for record in SeqIO.parse(input_fasta, "fasta"):
             if record.id in ids_to_keep:
                 SeqIO.write(record, outfile, "fasta")
-    print(f'Created {output_fasta}')
+    logging.info(f'Created {output_fasta}')
 
 
 def filter_clusters(cluster_file,fasta_file,query_ids_file,soi = None):
