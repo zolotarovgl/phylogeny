@@ -148,8 +148,9 @@ def run_cluster(cl_id,cluster_directory,refnames_file,mafft_opt,phy_method,force
         cluster_fasta = os.path.join(cluster_directory,cl_id +  ".fasta")
 
         fname_aln = os.path.splitext(cluster_fasta)[0] + '.aln'
-        tree_prefix = os.path.splitext(cluster_fasta)[0] + '.tree'
-        fname_tree = tree_prefix + ".treefile"
+        #tree_prefix = os.path.splitext(cluster_fasta)[0] + '.tree'
+        tree_prefix = os.path.splitext(cluster_fasta)[0]
+        fname_tree = tree_prefix + ".tree"
         fname_possvm = fname_tree + ".ortholog_groups.csv"
         logfile = os.path.join(cluster_directory,cl_id + '.log')
         
