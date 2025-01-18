@@ -10,8 +10,8 @@
 - MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!
 
 
-- phylosearch => blastology  
-- blastology: better handling of representative sequences:  
+BLASTOLOGY  
 - check for species prefixes in the provided queries! If these species aren't found in the fasta file, abort!  
-
 - slurm scripts to run blastology 
+- add a possibility to extract PFAM domain from blastp hits. Basically, run hmmsearch on the hits   
+

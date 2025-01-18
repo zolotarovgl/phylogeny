@@ -82,13 +82,15 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
                 file.write(k + "\t" + ",".join(v) +  "\n")
     logging.info(f'Created: {cluster_tabfile}')
 
-
+    cluster_fastas = []
     # For each cluster, create a separate file:
     for cl_id in clusters_renamed.keys():
         fasta_file = joint_fasta_fname
         ids_to_keep = clusters_renamed[cl_id]  # Replace with your list of IDs
         cluster_fasta = cluster_directory + "/" + cl_id +  ".fasta"
+        cluster_fastas.append(cluster_fasta)
         functions.retrive_sequences(joint_fasta_fname, cluster_fasta, ids_to_keep)
+    return(cluster_fastas)
 
 def parse_args(args):
     min_n = 3 # minimal number of sequences in the cluster
@@ -211,11 +213,13 @@ def blastology_run(args,logging,verbose = False):
         cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method,mcl_inflation = "1.1")
     
     # Cluster filtering 
-    filter_clusters(query = query, temp_dir = temp_dir, cluster_file = cluster_file, soi = soi, require_soi = require_soi,min_n = min_n, refnames_file = refnames_file, cluster_prefix = cluster_prefix, cluster_directory = cluster_directory,output_directory = output_directory, prefix = prefix, joint_fasta_fname = joint_fasta_fname, verbose = True)
-    cluster_fastas = [file for file in os.listdir(cluster_directory) if file.endswith('.fasta')]
+    cluster_fastas = filter_clusters(query = query, temp_dir = temp_dir, cluster_file = cluster_file, soi = soi, require_soi = require_soi,min_n = min_n, refnames_file = refnames_file, cluster_prefix = cluster_prefix, cluster_directory = cluster_directory,output_directory = output_directory, prefix = prefix, joint_fasta_fname = joint_fasta_fname, verbose = True)
+    cluster_fastas = [os.path.basename(x) for x in cluster_fastas]
     cluster_prefs = [x.replace('.fasta','') for x in cluster_fastas]
     
     # Now, for each cluster, run the easy-phylo
+    logging.info(f'{len(cluster_prefs)} sequence clusters to process: {",".join(cluster_prefs)}')
+    
     for cl_id in cluster_prefs:
         run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,prefix = prefix,mafft_opt=mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
 

@@ -271,7 +271,7 @@ if __name__ == "__main__":
         if os.path.isfile(fname_tree) and not force:
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
-            phylogeny(fasta_file = fname_aln, output_prefix = tree_prefix,ntmax = args.ncpu, method = method)
+            phylogeny(fasta_file = fname_aln, output_file = fname_tree,ntmax = args.ncpu, method = method)
         min_support_transfer = float(args.easyphylo_minsupport)
         possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix,min_support_transfer = min_support_transfer)
         print('Easy-phylo done!')
