@@ -174,8 +174,6 @@ if __name__ == "__main__":
         logging.info("Command: Cluster")
         clustering_method = 'diamond_mcl'
         
-        functions.check_tool('diamond')
-        functions.check_tool('mcl')
         
         infasta = args.fasta
         temp_dir = 'tmp/'
@@ -236,14 +234,12 @@ if __name__ == "__main__":
 
     elif args.command == 'align':
         logging.info("Command: Align")
-        functions.check_tool('mafft')
-        functions.check_tool('clipkit')
         align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft)
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
         method = args.method 
-        phylogeny(fasta_file = args.fasta, output_prefix = args.outprefix,ntmax = args.ncpu, method = method)
+        phylogeny(fasta_file = args.fasta, output_file = args.outprefix,ntmax = args.ncpu, method = method)
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")
