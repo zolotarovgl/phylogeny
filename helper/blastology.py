@@ -11,6 +11,8 @@ from helper.functions import possvm
 from helper.functions import blastp
 from helper.functions import cluster
 
+# cluster function is imported from helper.functions 
+
 def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_file,cluster_prefix,output_directory,prefix,joint_fasta_fname,cluster_directory,verbose = False):
     logging.info('Cluster filtering')    
     query_ids_file = os.path.join(temp_dir,f'{prefix}_query.ids') 
@@ -24,7 +26,7 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
         reader = csv.reader(file, delimiter="\t")
         for cluster_name, sequence_name in reader:
             clusters.setdefault(cluster_name, []).append(sequence_name)
-
+    logging.info(f'{cluster_file}: {len(clusters)} clusters.')
     # report
     clusters_query = [k for k,v in clusters.items() if any(elem in query_ids for elem in v)]
     clusters_small = [k for k,v in clusters.items() if len(v) < min_n]
@@ -93,6 +95,9 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
     return(cluster_fastas)
 
 def parse_args(args):
+    
+    print(args)
+    
     min_n = 3 # minimal number of sequences in the cluster
     cluster_prefix = args.prefix + '.' + args.cluster_prefix # a prefix to add to the cluster 
     output_directory = args.output_dir
@@ -111,9 +116,10 @@ def parse_args(args):
     ncpu = args.ncpu
     mafft = args.mafft
     phy_method = args.phymethod
+    mcl_inflation = args.mcl_inflation
     #globals().update(locals())
     #print(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi)
-    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method)
+    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method,mcl_inflation)
 
 def join_seqs(query,target,joint_fasta_fname,joint_ids_fname,blastp_outfile,verbose):
     cmd = f'cat {query} {target} > {joint_fasta_fname}_tmp; samtools faidx {joint_fasta_fname}_tmp'
@@ -172,7 +178,8 @@ def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefi
             logging.info(f'Created {fname_possvm}')
 
 def blastology_run(args,logging,verbose = False):
-    query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method = parse_args(args)
+    # this horrible argument parsing should be improved!!!
+    query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method,mcl_inflation = parse_args(args)
     output_file = args.outputfile
     prefix = args.prefix
     # Directories
@@ -209,9 +216,9 @@ def blastology_run(args,logging,verbose = False):
     if os.path.isfile(cluster_file) and not force:
         logging.info(f'Found clustering file {cluster_file}. Skipping')
     else:
-        clustering_method = 'diamond_mcl' 
-        cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method,mcl_inflation = "1.1")
-    
+        clustering_method = 'diamond_mcl'
+        logging.info(f'Running MCL clustering of {joint_fasta_fname} with inflation {mcl_inflation} ...')
+        cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method,mcl_inflation = mcl_inflation,verbose = verbose)
     # Cluster filtering 
     cluster_fastas = filter_clusters(query = query, temp_dir = temp_dir, cluster_file = cluster_file, soi = soi, require_soi = require_soi,min_n = min_n, refnames_file = refnames_file, cluster_prefix = cluster_prefix, cluster_directory = cluster_directory,output_directory = output_directory, prefix = prefix, joint_fasta_fname = joint_fasta_fname, verbose = True)
     cluster_fastas = [os.path.basename(x) for x in cluster_fastas]

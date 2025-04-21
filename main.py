@@ -147,6 +147,7 @@ if __name__ == "__main__":
     parser_blastology.add_argument('--cluster_prefix', required=False, default = 'HG', help='Prefix to use with sequence clusters. Default: "HG"')
     parser_blastology.add_argument('--min_perc', required=False, default = 30, help='Minimum sequence percentage identity for BLASTP hit filtering. Default [30]')
     parser_blastology.add_argument('--evalue', required=False, default = "1e-5", help='BLAST E-value threshold. Default "1e-5"')
+    parser_blastology.add_argument('--mcl_inflation', required=False, default = "1.1", help='MCL inflation parameter. Default "1.1"')
 
     args = parser.parse_args()
 

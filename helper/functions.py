@@ -88,7 +88,7 @@ def phylogeny_iqtree(fasta_file, output_file, cptime = 5000, nstop = 50, nm = 50
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     #logging.info(f'IQTREE2: Created {output_prefix}.treefile')
-    if ouptut_file != f"{output_prefix}.treefile":
+    if output_file != f"{output_prefix}.treefile":
         cmd = f"mv {output_prefix}.treefile {output_file}"
         subprocess.run(cmd, shell=True, check=True)
 
