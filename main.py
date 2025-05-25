@@ -68,7 +68,7 @@ if __name__ == "__main__":
     parser_search.add_argument('--pfam_db',required=False, default = None, help='Path to Pfam-A.hmm file. Default: None')
     parser_search.add_argument('--domain_expand',required=False, default = "50", help='Expand domain ranges to X aminoacids in both directions. Default: 50')
     parser_search.add_argument('-c', '--ncpu', required=False, default = int(1),  help='Number of CPU cores to use')
-    
+    parser_search.add_argument('--keep', required=False, default = False, action = 'store_true', help='Use this to keep temporary files')
     # Cluster
     parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
     parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         
         domain_expand = int(args.domain_expand) 
         hmmsearch(fasta_file = args.fasta, gene_family_info = args.gene_family_info, gene_family_name=args.gene_family_name, output_dir=args.output_dir, pfam_db=args.pfam_db,hmm_dir=hmm_dir, ncpu = int(args.ncpu),
-                   domain_expand = domain_expand, verbose = verbose)
+                   domain_expand = domain_expand, verbose = verbose,do_clean = args.keep)
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
