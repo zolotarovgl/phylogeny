@@ -16,4 +16,7 @@ BLASTOLOGY
 - add a possibility to extract PFAM domain from blastp hits. Basically, run hmmsearch on the hits   
 
 EASYPHYLO  
-- add an output directory option so that the output files are not written to the directory with inputs   
+- add an output directory option so that the output files are not written to the directory with inputs - DONE  
+- get rid of .tree.treefile file names   
+- CAVE: iqtree3 now may provide alrt branch support values as well. Need to test whether possvm is able to handle it. 
+

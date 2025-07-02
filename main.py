@@ -115,7 +115,7 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_easyphylo.add_argument('--outdir', default = None, help='Optional: output directory. By default, the output files are written to the directory of the input file')
     parser_easyphylo.add_argument('--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
-    parser_easyphylo.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
+    parser_easyphylo.add_argument('--force', required=False, default = False, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_easyphylo.add_argument('--method', default = "iqtree3", help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
     parser_easyphylo.add_argument('--mafft', required=False, default ="auto", help='Mafft alignment options. Default: auto - picks based on the number of sequences.\nAvailable options: auto, fast, linsi,einsi,ginsi')
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     parser_blastology.add_argument('--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
     parser_blastology.add_argument('--phymethod', required=False, default = "iqtree3",  help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_blastology.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
-    parser_blastology.add_argument('--force', required=False, default = True, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
+    parser_blastology.add_argument('--force', required=False, default = False, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_blastology.add_argument('-t','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')
     parser_blastology.add_argument('--cluster_prefix', required=False, default = 'HG', help='Prefix to use with sequence clusters. Default: "HG"')
     parser_blastology.add_argument('--min_perc', required=False, default = 30, help='Minimum sequence percentage identity for BLASTP hit filtering. Default [30]')
@@ -281,22 +281,31 @@ if __name__ == "__main__":
             tree_prefix = os.path.join(outdir, basename + '.tree')
 
         fname_tree = tree_prefix + ".treefile"
+        
+        log_aln = f'{os.path.dirname(fname_tree)}/alignment.log'
         log_phy = f'{os.path.dirname(fname_tree)}/phylogeny.log'
+        log_possvm = f'{os.path.dirname(fname_tree)}/possvm.log'
+
         logging.info(f'Easy-phylo: {fname_aln} => {fname_tree}. Log: {log_phy}')
         
         if os.path.isfile(fname_aln) and not force:
             print(f'Found alignment file: {fname_aln}! Skipping alignment')
         else:
-            align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = mafft_opt)
+            align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = mafft_opt,logfile = log_aln)
         if os.path.isfile(fname_tree) and not force:
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
             phylogeny(fasta_file = fname_aln, output_file = fname_tree,ntmax = args.ncpu, method = method, logfile = log_phy)
         min_support_transfer = float(args.easyphylo_minsupport)
-        # run possvm if the refnames have been specified!
         
-        possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix,min_support_transfer = min_support_transfer)
-        print('Easy-phylo done!')
+        possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix,min_support_transfer = min_support_transfer, logfile = log_possvm)
+        
+        # Check the output:
+        fname_out = f'{fname_tree}.ortholog_groups.csv'
+        if not os.path.exists(fname_out):
+            raise FileNotFoundError(f'Expected output not found: {fname_out}')
+        else:
+            logging.info(f'Easy-phylo done: {fname_out}')
 
     elif args.command == 'phylo-search':
         raise(NotImplementedError("Use blastology command!"))

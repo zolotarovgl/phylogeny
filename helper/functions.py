@@ -9,7 +9,7 @@ import ete3
 
 
 #### Tool functions #####
-def align(fasta_file, output_file, ncpu, mafft_opt,verbose):
+def align(fasta_file, output_file, ncpu, mafft_opt, verbose = True):
     if verbose:
         n  = count_seqs(fasta_file,verbose)
         logging.info(f"Aligning {n} sequences with mafft")
@@ -123,9 +123,11 @@ def phylogeny_iqtree3(fasta_file, output_file, model = "MFP", cptime = 1000, nst
         subprocess.run(cmd, shell=True, check=True)
 
 
-def phylogeny_fasttree(fasta_file, output_file, logfile = '/dev/null'):
+def phylogeny_fasttree(fasta_file, output_file, logfile = ''):
     logging.info(f"Phylogeny: {fasta_file} {output_file}")
-    cmd = f"fasttree -gtr -quiet {fasta_file} > {output_file}"
+    if logfile:
+        logfile = f'-log {logfile}' 
+    cmd = f"fasttree {logfile} -quiet -gtr {fasta_file} > {output_file} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     logging.info(f'Created {output_file}')
