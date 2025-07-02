@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser_phylogeny.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_phylogeny.add_argument('-o', '--outprefix', required=True, help='Output prefix for IQTREE2 files')
     parser_phylogeny.add_argument('-c', '--ncpu', required=True,  help='Number of CPU cores to use')
-    parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
+    parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
 
     # GeneRax
     parser_generax = subparsers.add_parser('generax', help='Run GeneRax [NOT IMPLEMENTED]')
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_easyphylo.add_argument('-o','--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
     parser_easyphylo.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
-    parser_easyphylo.add_argument('--method', default = "fasttree", help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
+    parser_easyphylo.add_argument('--method', default = "iqtree3", help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
 
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     parser_blastology.add_argument('--outputfile', required=True, default = None, help='Name of output file with annotations')
     parser_blastology.add_argument('-s','--soi', default = "", required = False, help='Prefix of the species of interest - e.g. "Mlei"')
     parser_blastology.add_argument('--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
-    parser_blastology.add_argument('--phymethod', required=False, default = "iqtree2",  help='Phylogeny method: fasttree, iqtree2. Default: fasttree')
+    parser_blastology.add_argument('--phymethod', required=False, default = "iqtree3",  help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_blastology.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_blastology.add_argument('--force', required=False, default = True, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_blastology.add_argument('-t','--temp_dir', required=False, default = 'tmp/', help='Temporary directory name. Default: tmp/')

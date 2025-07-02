@@ -54,9 +54,12 @@ def get_node_support_range(treefile):
     max_support = max(support_values)
     return(min_support,max_support)
 
-def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree2'):
+def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree3'):
+    logging.info($'Phylogeny: {method}')
     if method == 'iqtree2':
-        phylogeny_iqtree(fasta_file,output_file,ntmax = ntmax)
+        phylogeny_iqtree2(fasta_file,output_file,ntmax = ntmax)
+    if method == 'iqtree3':
+        phylogeny_iqtree3(fasta_file,output_file,ntmax = ntmax)
     elif method == 'fasttree':
         #outfile = output_prefix + ".treefile"
         phylogeny_fasttree(fasta_file,output_file)
@@ -64,7 +67,7 @@ def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree2'):
         logging.error('Phylogeny has failed. Can not find {output_file}! Aborting ...')
         quit()
 
-def phylogeny_iqtree(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
+def phylogeny_iqtree2(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
     # Main output: {output_prefix}.treeflie
     # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
 
@@ -91,6 +94,34 @@ def phylogeny_iqtree(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 1
     if output_file != f"{output_prefix}.treefile":
         cmd = f"mv {output_prefix}.treefile {output_file}"
         subprocess.run(cmd, shell=True, check=True)
+
+
+def phylogeny_iqtree3(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
+    # Main output: {output_prefix}.treeflie
+
+    # iqtree creates the files given a prefix {PREFIX}.treefile 
+    # If the output file name provided and ends in .tree - use as a prefix 
+    logging.info(f"Phylogeny: {fasta_file} {output_file}")
+    if output_file.endswith('.treefile'):
+        output_prefix = output_file.replace('.treefile','')
+        if verbose:
+            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
+    elif output_file.endswith('.tree'):
+        output_prefix = output_file.replace('.tree','')
+        if verbose:
+            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
+    else:
+        output_prefix = output_file
+        if verbose:
+            logging.info(f"IQTREE2: output prefix: {output_prefix}")
+    cmd = f"{iqtree3} -s {fasta_file} -m TEST -m MFP+MERG -mset LG,WAG,JTT -T AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --prefix {output_prefix} --redo > {logfile} 2>&1"
+    logging.info(cmd)
+    subprocess.run(cmd, shell=True, check=True)
+    #logging.info(f'IQTREE2: Created {output_prefix}.treefile')
+    if output_file != f"{output_prefix}.treefile":
+        cmd = f"mv {output_prefix}.treefile {output_file}"
+        subprocess.run(cmd, shell=True, check=True)
+
 
 def phylogeny_fasttree(fasta_file, output_file):
     logging.info(f"Phylogeny: {fasta_file} {output_file}")
