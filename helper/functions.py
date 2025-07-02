@@ -64,7 +64,7 @@ def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree2'):
         logging.error('Phylogeny has failed. Can not find {output_file}! Aborting ...')
         quit()
 
-def phylogeny_iqtree(fasta_file, output_file, cptime = 5000, nstop = 50, nm = 500, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
+def phylogeny_iqtree(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
     # Main output: {output_prefix}.treeflie
     # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
 
