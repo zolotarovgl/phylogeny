@@ -1,7 +1,7 @@
 - simplify gene family file
 - add more possvm options
 - cluster stats output
-- separate log files
+- separate log files for phylogeny
 - move cluster filtering from the main
 - make nicer temporary and output directories
 - manage --force and re-running
@@ -15,3 +15,5 @@ BLASTOLOGY
 - slurm scripts to run blastology 
 - add a possibility to extract PFAM domain from blastp hits. Basically, run hmmsearch on the hits   
 
+EASYPHYLO  
+- add an output directory option so that the output files are not written to the directory with inputs   

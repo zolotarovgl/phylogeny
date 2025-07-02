@@ -54,20 +54,20 @@ def get_node_support_range(treefile):
     max_support = max(support_values)
     return(min_support,max_support)
 
-def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree3'):
-    logging.info('Phylogeny: {method}')
+def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree3',logfile = '/dev/null'):
+    logging.info(f'Phylogeny: {method}')
     if method == 'iqtree2':
-        phylogeny_iqtree2(fasta_file,output_file,ntmax = ntmax)
+        phylogeny_iqtree2(fasta_file,output_file,ntmax = ntmax,logfile = logfile)
     if method == 'iqtree3':
-        phylogeny_iqtree3(fasta_file,output_file,ntmax = ntmax)
+        phylogeny_iqtree3(fasta_file,output_file,ntmax = ntmax,logfile = logfile)
     elif method == 'fasttree':
         #outfile = output_prefix + ".treefile"
-        phylogeny_fasttree(fasta_file,output_file)
+        phylogeny_fasttree(fasta_file,output_file,logfile = logfile)
     if not os.path.isfile(output_file):
         logging.error('Phylogeny has failed. Can not find {output_file}! Aborting ...')
         quit()
 
-def phylogeny_iqtree2(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
+def phylogeny_iqtree2(fasta_file, output_file, model = 'TEST', cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
     # Main output: {output_prefix}.treeflie
     # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
 
@@ -87,7 +87,7 @@ def phylogeny_iqtree2(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 
         output_prefix = output_file
         if verbose:
             logging.info(f"IQTREE2: output prefix: {output_prefix}")
-    cmd = f"{iqtree2} -s {fasta_file} -m TEST -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -pre {output_prefix} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
+    cmd = f"{iqtree2} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -pre {output_prefix} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     #logging.info(f'IQTREE2: Created {output_prefix}.treefile')
@@ -96,7 +96,7 @@ def phylogeny_iqtree2(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 
         subprocess.run(cmd, shell=True, check=True)
 
 
-def phylogeny_iqtree3(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
+def phylogeny_iqtree3(fasta_file, output_file, model = "MFP", cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree3 = "iqtree3",logfile = '/dev/null',verbose = True):
     # Main output: {output_prefix}.treeflie
 
     # iqtree creates the files given a prefix {PREFIX}.treefile 
@@ -105,16 +105,16 @@ def phylogeny_iqtree3(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 
     if output_file.endswith('.treefile'):
         output_prefix = output_file.replace('.treefile','')
         if verbose:
-            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
+            logging.info(f"IQTREE3: outputfile ends with .treefile => {output_prefix}")
     elif output_file.endswith('.tree'):
         output_prefix = output_file.replace('.tree','')
         if verbose:
-            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
+            logging.info(f"IQTREE3: outputfile ends with .treefile => {output_prefix}")
     else:
         output_prefix = output_file
         if verbose:
-            logging.info(f"IQTREE2: output prefix: {output_prefix}")
-    cmd = f"{iqtree3} -s {fasta_file} -m TEST -m MFP+MERG -mset LG,WAG,JTT -T AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --prefix {output_prefix} --redo > {logfile} 2>&1"
+            logging.info(f"IQTREE3: output prefix: {output_prefix}")
+    cmd = f"{iqtree3} -s {fasta_file} -m {model} -T AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --prefix {output_prefix} --redo > {logfile} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     #logging.info(f'IQTREE2: Created {output_prefix}.treefile')
@@ -123,7 +123,7 @@ def phylogeny_iqtree3(fasta_file, output_file, cptime = 1000, nstop = 200, nm = 
         subprocess.run(cmd, shell=True, check=True)
 
 
-def phylogeny_fasttree(fasta_file, output_file):
+def phylogeny_fasttree(fasta_file, output_file, logfile = '/dev/null'):
     logging.info(f"Phylogeny: {fasta_file} {output_file}")
     cmd = f"fasttree -gtr -quiet {fasta_file} > {output_file}"
     logging.info(cmd)
@@ -221,6 +221,29 @@ def count_seqs(fasta_file, verbose=False):
         logging.info(cmd)
     result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
     return int(result.stdout.strip())
+
+
+def pick_mafft(mafft,fasta,max_n = 500, maxiterate = 1000, logging = None):
+    # pick mafft options  based on the number of sequences
+    logging.info(f'MAFFT: {mafft}')
+    if mafft == 'auto':
+            logging.info(f'MAFFT: picking MAFFT option based on the number of sequences.')
+            n_seq = count_seqs(fasta, verbose=False)
+            if n_seq <= max_n:
+                mafft_mode = 'linsi'
+            else:
+                mafft_mode = 'fast'
+            logging.info(f'MAFFT: # {n_seq} input sequences (max. {max_n}) => {mafft_mode}')
+    else:
+        mafft_mode = mafft
+
+    if mafft_mode == 'fast':
+        mafft_opt = ''
+    elif mafft_mode == 'linsi':
+        mafft_opt = f'--maxiterate {maxiterate} --localpair'
+    else:
+        logging.error(f"ERROR: unknown mafft mode: {mafft_mode}")
+    return(mafft_opt)
 
 def get_fasta_names(fasta_file,out_file,verbose = False):
     cmd = f"grep '>' {fasta_file} | sed 's/>//g' | sort | uniq > {out_file}"

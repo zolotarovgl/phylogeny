@@ -111,13 +111,15 @@ if __name__ == "__main__":
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
     parser_easyphylo.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_easyphylo.add_argument('-c','--ncpu', required=True, help='Number of CPU cores to use')
-    parser_easyphylo.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
+#    parser_easyphylo.add_argument('-m', '--mafft', required=False, default ="--auto", help='MAFFT: Mafft alignment options. Default  --auto')
     parser_easyphylo.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
-    parser_easyphylo.add_argument('-o','--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
+    parser_easyphylo.add_argument('--outdir', default = None, help='Optional: output directory. By default, the output files are written to the directory of the input file')
+    parser_easyphylo.add_argument('--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
     parser_easyphylo.add_argument('--force', required=False, help='Use this to rerun intermediate files (e.g. alignment)')
     parser_easyphylo.add_argument('--method', default = "iqtree3", help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
-
+    parser_easyphylo.add_argument('--mafft', required=False, default ="auto", help='Mafft alignment options. Default: auto - picks based on the number of sequences.\nAvailable options: auto, fast, linsi,einsi,ginsi')
+    
 
     # BLASTOLOGY - phylosearch v2
     parser_blastology = subparsers.add_parser('blastology',
@@ -254,22 +256,45 @@ if __name__ == "__main__":
         possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix, refsps = args.refsps, min_support_transfer = min_support_transfer)
 
     elif args.command == 'easy-phylo':
-        logging.info('Easy-phylo')
-        fname_aln = os.path.splitext(args.fasta)[0] + '.aln'
-        tree_prefix = os.path.splitext(args.fasta)[0] + '.tree'
-        fname_tree = tree_prefix + ".treefile"
-        force = args.force
-        method = args.method 
 
+        logging.info('Easy-phylo')
+        inputfasta = args.fasta
+        force = args.force
+        method = args.method
+        mafft = args.mafft
+
+        
+        mafft_opt = functions.pick_mafft(mafft,inputfasta, max_n = 500, maxiterate = 1000, logging = logging)
+        
+        if args.outdir is None:
+            fname_aln = os.path.splitext(inputfasta)[0] + '.aln'
+            tree_prefix = os.path.splitext(inputfasta)[0] + '.tree'
+        else:
+            outdir = args.outdir
+            if not os.path.exists(outdir):
+                logging.info(f'Created output directory {outdir}/')
+                os.makedirs(outdir)
+            else:
+                logging.info(f'Warning: Output directory {outdir}/ exists')
+            basename = os.path.splitext(os.path.basename(inputfasta))[0]
+            fname_aln = os.path.join(outdir, basename + '.aln')
+            tree_prefix = os.path.join(outdir, basename + '.tree')
+
+        fname_tree = tree_prefix + ".treefile"
+        log_phy = f'{os.path.dirname(fname_tree)}/phylogeny.log'
+        logging.info(f'Easy-phylo: {fname_aln} => {fname_tree}. Log: {log_phy}')
+        
         if os.path.isfile(fname_aln) and not force:
             print(f'Found alignment file: {fname_aln}! Skipping alignment')
         else:
-            align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = "")
+            align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = mafft_opt)
         if os.path.isfile(fname_tree) and not force:
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
-            phylogeny(fasta_file = fname_aln, output_file = fname_tree,ntmax = args.ncpu, method = method)
+            phylogeny(fasta_file = fname_aln, output_file = fname_tree,ntmax = args.ncpu, method = method, logfile = log_phy)
         min_support_transfer = float(args.easyphylo_minsupport)
+        # run possvm if the refnames have been specified!
+        
         possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix,min_support_transfer = min_support_transfer)
         print('Easy-phylo done!')
 

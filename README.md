@@ -49,3 +49,13 @@ Dmel_QUERY_Q7KM33       dmelBCL2
 The names (2nd column) can be any, but try to keep them distinguishable!  
 
 **TODO**: add species prefix check - strict and not. Request that all the reference species are present in the target file.
+
+
+# 02.07.25 - IQTREE3   
+
+CAVE: iqtree3 now may provide alrt branch support values as well. Need to test whether possvm is able to handle it. 
+
+Run a simple phylogeny: mafft - iqtree3 - possvm using 16 threads. 
+```bash
+python main.py easy-phylo -f data/arp23.fasta -c 16 --outdir results
+```
