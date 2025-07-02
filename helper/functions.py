@@ -55,7 +55,7 @@ def get_node_support_range(treefile):
     return(min_support,max_support)
 
 def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree3'):
-    logging.info($'Phylogeny: {method}')
+    logging.info('Phylogeny: {method}')
     if method == 'iqtree2':
         phylogeny_iqtree2(fasta_file,output_file,ntmax = ntmax)
     if method == 'iqtree3':
