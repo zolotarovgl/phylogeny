@@ -254,7 +254,7 @@ if __name__ == "__main__":
                 outprefix = os.path.splitext(os.path.abspath(outfile))[0]
                 logging.info(f'Phylogeny: Output file: {outfile} => Output prefix: {outprefix}')
             elif outprefix:
-                outfile = outprefix + '.tree'
+                outfile = outprefix + '.treefile'
                 logging.info(f'Phylogeny: Output prefix: {outprefix} => Output prefix: {outfile}')
 
         # the phylogeny function should receive either the output file or the output prefix value
