@@ -54,12 +54,35 @@ def get_node_support_range(treefile):
     max_support = max(support_values)
     return(min_support,max_support)
 
-def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree3',logfile = '/dev/null'):
+
+def phylogeny_get_prefix(output_file = None,output_prefix = None,verbose = False):
+    # given on the output file name, get the file prefix - needed for the iqtree!
+    if not output_file and not output_prefix or output_file and output_prefix:
+        logging.error('Please, provide either --output_file or --output_prefix!')
+    else:
+        if output_file:
+            logging.info(f'Output file provided. Guessing file prefix from the name:')
+        if output_file.endswith('.treefile'):
+            output_prefix = output_file.replace('.treefile','')
+            if verbose:
+                logging.info(f"IQTREE3: outputfile ends with .treefile => {output_prefix}")
+        elif output_file.endswith('.tree'):
+            output_prefix = output_file.replace('.tree','')
+            if verbose:
+                logging.info(f"IQTREE3: outputfile ends with .treefile => {output_prefix}")
+            else:
+                logging.info(f'Output prefix provided: {output_prefix}')
+
+    return(output_prefix)
+
+
+
+def phylogeny(fasta_file,output_file, output_prefix = None, ntmax = 1,method = 'iqtree3',logfile = '/dev/null'):
     logging.info(f'Phylogeny: {method}')
     if method == 'iqtree2':
-        phylogeny_iqtree2(fasta_file,output_file,ntmax = ntmax,logfile = logfile)
+        phylogeny_iqtree2(fasta_file = fasta_file,output_file = output_file,output_prefix = output_prefix,ntmax = ntmax,logfile = logfile)
     if method == 'iqtree3':
-        phylogeny_iqtree3(fasta_file,output_file,ntmax = ntmax,logfile = logfile)
+        phylogeny_iqtree3(fasta_file = fasta_file,output_file = output_file, output_prefix = output_prefix,ntmax = ntmax,logfile = logfile)
     elif method == 'fasttree':
         #outfile = output_prefix + ".treefile"
         phylogeny_fasttree(fasta_file,output_file,logfile = logfile)
@@ -67,26 +90,17 @@ def phylogeny(fasta_file,output_file,ntmax = 1,method = 'iqtree3',logfile = '/de
         logging.error('Phylogeny has failed. Can not find {output_file}! Aborting ...')
         quit()
 
-def phylogeny_iqtree2(fasta_file, output_file, model = 'TEST', cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
+def phylogeny_iqtree2(fasta_file, output_file = None, output_prefix = None, model = 'TEST', cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
     # Main output: {output_prefix}.treeflie
     # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
 
     # iqtree creates the files given a prefix {PREFIX}.treefile 
     # If the output file name provided and ends in .tree - use as a prefix 
-    logging.info(f"Phylogeny: {fasta_file} {output_file}")
-    print(output_file)
-    if output_file.endswith('.treefile'):
-        output_prefix = output_file.replace('.treefile','')
-        if verbose:
-            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
-    elif output_file.endswith('.tree'):
-        output_prefix = output_file.replace('.tree','')
-        if verbose:
-            logging.info(f"IQTREE2: outputfile ends with .treefile => {output_prefix}")
-    else:
-        output_prefix = output_file
-        if verbose:
-            logging.info(f"IQTREE2: output prefix: {output_prefix}")
+    logging.info(f"Phylogeny iqtree2: {fasta_file} {output_file}")
+    # the prefix is being parsed from the output file name 
+    
+    #output_prefix = phylogeny_get_prefix(output_file = output_file, output_prefix = output_prefix)
+
     cmd = f"{iqtree2} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -pre {output_prefix} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
@@ -96,24 +110,11 @@ def phylogeny_iqtree2(fasta_file, output_file, model = 'TEST', cptime = 1000, ns
         subprocess.run(cmd, shell=True, check=True)
 
 
-def phylogeny_iqtree3(fasta_file, output_file, model = "MFP", cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree3 = "iqtree3",logfile = '/dev/null',verbose = True):
-    # Main output: {output_prefix}.treeflie
-
+def phylogeny_iqtree3(fasta_file, output_file = None, output_prefix = None, model = "MFP", cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree3 = "iqtree3",logfile = '/dev/null',verbose = True):
     # iqtree creates the files given a prefix {PREFIX}.treefile 
     # If the output file name provided and ends in .tree - use as a prefix 
     logging.info(f"Phylogeny: {fasta_file} {output_file}")
-    if output_file.endswith('.treefile'):
-        output_prefix = output_file.replace('.treefile','')
-        if verbose:
-            logging.info(f"IQTREE3: outputfile ends with .treefile => {output_prefix}")
-    elif output_file.endswith('.tree'):
-        output_prefix = output_file.replace('.tree','')
-        if verbose:
-            logging.info(f"IQTREE3: outputfile ends with .treefile => {output_prefix}")
-    else:
-        output_prefix = output_file
-        if verbose:
-            logging.info(f"IQTREE3: output prefix: {output_prefix}")
+
     cmd = f"{iqtree3} -s {fasta_file} -m {model} -T AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --prefix {output_prefix} --redo > {logfile} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
@@ -125,6 +126,8 @@ def phylogeny_iqtree3(fasta_file, output_file, model = "MFP", cptime = 1000, nst
 
 def phylogeny_fasttree(fasta_file, output_file, logfile = ''):
     logging.info(f"Phylogeny: {fasta_file} {output_file}")
+    if logfile == '/dev/null':
+        logfile = ''
     if logfile:
         logfile = f'-log {logfile}' 
     cmd = f"fasttree {logfile} -quiet -gtr {fasta_file} > {output_file} 2>&1"

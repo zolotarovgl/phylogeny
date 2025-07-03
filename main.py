@@ -89,7 +89,8 @@ if __name__ == "__main__":
     # Phylogeny
     parser_phylogeny = subparsers.add_parser('phylogeny', help='Run IQTREE2 for an alignment in --fasta')
     parser_phylogeny.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
-    parser_phylogeny.add_argument('-o', '--outprefix', required=True, help='Output prefix for IQTREE2 files')
+    parser_phylogeny.add_argument('--outprefix', required=False, help='Output prefix for phylogeny files')
+    parser_phylogeny.add_argument('--outfile', required=False, help='Output file name')
     parser_phylogeny.add_argument('-c', '--ncpu', required=True,  help='Number of CPU cores to use')
     parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
 
@@ -241,8 +242,23 @@ if __name__ == "__main__":
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
+        # Properly decide on the output prefix 
         method = args.method 
-        phylogeny(fasta_file = args.fasta, output_file = args.outprefix,ntmax = args.ncpu, method = method)
+        outprefix = args.outprefix
+        outfile = args.outfile 
+        if not outfile and not outprefix:
+            logging.error("Please, provide either --outprefix or --outfile option!")
+            quit()
+        else:
+            if outfile:
+                outprefix = os.path.splitext(os.path.abspath(outfile))[0]
+                logging.info(f'Phylogeny: Output file: {outfile} => Output prefix: {outprefix}')
+            elif outprefix:
+                outfile = outprefix + '.tree'
+                logging.info(f'Phylogeny: Output prefix: {outprefix} => Output prefix: {outfile}')
+
+        # the phylogeny function should receive either the output file or the output prefix value
+        phylogeny(fasta_file = args.fasta, output_file = outfile, output_prefix = outprefix,ntmax = args.ncpu, method = method)
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")
