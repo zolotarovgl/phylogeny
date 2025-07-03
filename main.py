@@ -248,7 +248,7 @@ if __name__ == "__main__":
         outfile = args.outfile 
         if not outfile and not outprefix:
             logging.error("Please, provide either --outprefix or --outfile option!")
-            quit()
+            sys.exit(1)
         else:
             if outfile:
                 outprefix = os.path.splitext(os.path.abspath(outfile))[0]

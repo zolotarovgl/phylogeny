@@ -59,6 +59,7 @@ def phylogeny_get_prefix(output_file = None,output_prefix = None,verbose = False
     # given on the output file name, get the file prefix - needed for the iqtree!
     if not output_file and not output_prefix or output_file and output_prefix:
         logging.error('Please, provide either --output_file or --output_prefix!')
+        sys.exit(1)
     else:
         if output_file:
             logging.info(f'Output file provided. Guessing file prefix from the name:')
@@ -75,10 +76,23 @@ def phylogeny_get_prefix(output_file = None,output_prefix = None,verbose = False
 
     return(output_prefix)
 
+def check_binary(program,logging):
+    import shutil
+    if shutil.which(program) is None:
+        logging.error(f'{program} not found in PATH. Please install or load the binary.')
+        sys.exit(1)
+    else:
+        logging.info(f'Found {program}')
 
 
 def phylogeny(fasta_file,output_file, output_prefix = None, ntmax = 1,method = 'iqtree3',logfile = '/dev/null'):
+
+    import shutil
+    import logging
+
     logging.info(f'Phylogeny: {method}')
+    check_binary(method,logging)
+    
     if method == 'iqtree2':
         phylogeny_iqtree2(fasta_file = fasta_file,output_file = output_file,output_prefix = output_prefix,ntmax = ntmax,logfile = logfile)
     if method == 'iqtree3':
@@ -88,7 +102,7 @@ def phylogeny(fasta_file,output_file, output_prefix = None, ntmax = 1,method = '
         phylogeny_fasttree(fasta_file,output_file,logfile = logfile)
     if not os.path.isfile(output_file):
         logging.error('Phylogeny has failed. Can not find {output_file}! Aborting ...')
-        quit()
+        sys.exit(1)
 
 def phylogeny_iqtree2(fasta_file, output_file = None, output_prefix = None, model = 'TEST', cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
     # Main output: {output_prefix}.treeflie
@@ -218,7 +232,7 @@ def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseq
 
     else:
         logging.info(f'Unknown clustering method {method}!')
-        quit()
+        sys.exit(1)
 
 def count_seqs(fasta_file, verbose=False):
     cmd = f"grep -c '>' {fasta_file}"
@@ -248,6 +262,7 @@ def pick_mafft(mafft,fasta,max_n = 500, maxiterate = 1000, logging = None):
         mafft_opt = f'--maxiterate {maxiterate} --localpair'
     else:
         logging.error(f"ERROR: unknown mafft mode: {mafft_mode}")
+        sys.exit(1)
     return(mafft_opt)
 
 def get_fasta_names(fasta_file,out_file,verbose = False):
