@@ -75,11 +75,42 @@ The names (2nd column) can be any, but try to keep them distinguishable!
 **TODO**: add species prefix check - strict and not. Request that all the reference species are present in the target file.
 
 
-# 02.07.25 - IQTREE3   
 
-CAVE: iqtree3 now may provide alrt branch support values as well. Need to test whether possvm is able to handle it. 
+# Tests   
 
-Run a simple phylogeny: mafft - iqtree3 - possvm using 16 threads. The results will be saved to `outdir`
-```bash
+
+```bash 
+# alignment and trimming 
+INFASTA=data/arp23.fasta
+python main.py align -f $INFASTA -o test.aln --notrim
+python main.py trim -f test.aln -o test.alt --logfile test.log
+
+# easy-phylo
 python main.py easy-phylo --method fasttree -f data/arp23.fasta -c 16 --outdir results
+# blastology
+python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --target data/sample.fasta -c 5 --force --soi Owefus --outputfile Owenia_bcl2.tab --phymethod fasttree
 ```
+
+
+
+# Generax   
+
+To use GeneRax, install it from source (`https://github.com/BenoitMorel/GeneRax`) or from conda (`https://anaconda.org/bioconda/generax`).
+
+
+GeneRax Example:  
+
+```bash 
+python helper/generax.py \
+  --name Tubulin \
+  --alignment generax_test/Tubulin.aln \
+  --gene_tree generax_test/Tubulin.tree \
+  --species_tree generax_test/species_tree.newick \
+  --output_dir results_generax \
+  --subs_model LG \
+  --max-spr 3 \
+  --cpus 1 \
+  --outfile updated.tree
+```
+`GeneRax` can work with multiple gene families.
+This will create `results_generax` directory with a

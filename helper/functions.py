@@ -157,7 +157,9 @@ def phylogeny_fasttree(fasta_file, output_file, logfile = ''):
 def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG", possvm = 'submodules/possvm-orthology/possvm.py',logfile = '/dev/null',refsps = None,min_support_transfer = 50):
     logging.info(f"Possvm: {treefile}\nLog: {logfile}")
     # Adjust min_support according to the value range in provided tree 
-    print(min_support_transfer)
+    if not os.path.isfile(treefile):
+        logging.error(f'ERROR: {treefile} does not exist!')
+        sys.exit(1)
     nsr = get_node_support_range(treefile)
     if min_support_transfer:
         if min_support_transfer > nsr[1]:
