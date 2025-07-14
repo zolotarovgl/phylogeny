@@ -3,6 +3,9 @@
 git clone --recurse-submodules https://github.com/zolotarovgl/phylogeny.git
 ```
 
+To use GeneRax, install it from source (`https://github.com/BenoitMorel/GeneRax`) or from conda (`https://anaconda.org/bioconda/generax`).
+
+
 # Commands   
 
 
@@ -94,8 +97,6 @@ python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --t
 
 
 # Generax   
-To use GeneRax, install it from source (`https://github.com/BenoitMorel/GeneRax`) or from conda (`https://anaconda.org/bioconda/generax`).
-
 
 GeneRax Example:  
 
