@@ -17,7 +17,7 @@ positional arguments:
     hmmsearch           Search for a family using HMMER
     cluster             Run clustering
     align               Run alignment
-    phylogeny           Run IQTREE2 for an alignment in --fasta
+    phylogeny           Run phylogeny 
     generax             Run GeneRax 
     possvm              Run POSSVM
     easy-phylo          Build a phylogeny from a single fasta
@@ -27,7 +27,7 @@ positional arguments:
 
 
 
-# Commmand Examples  
+# Command Examples  
 
 ### HMMSEARCH
 Use the gene family info in `data/genefam.tsv` to search for proteins and to group them into defined gene families.  
