@@ -1,12 +1,20 @@
+GENERAL  
+
+- simple tests - blastology   
 - simplify gene family file
 - add more possvm options
 - cluster stats output
 - separate log files for phylogeny
-- move cluster filtering from the main
 - make nicer temporary and output directories
 - manage --force and re-running
 - Clustering guided by representative sequence alignment and phylogeny
 - Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest
+
+CLUSTERING  
+- solve the issue with multiple "cluster" functions - there is one in main and the other one in blastology  
+- better iterative clustering handling   
+- mmseqs2 clustering - implement iterative clustering   
+- move cluster filtering from the main
 - MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!
 
 
@@ -14,9 +22,23 @@ BLASTOLOGY
 - check for species prefixes in the provided queries! If these species aren't found in the fasta file, abort!  
 - slurm scripts to run blastology 
 - add a possibility to extract PFAM domain from blastp hits. Basically, run hmmsearch on the hits   
+- MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!
 
 EASYPHYLO  
-- add an output directory option so that the output files are not written to the directory with inputs - DONE  
-- get rid of .tree.treefile file names   
+- [x] add an output directory option so that the output files are not written to the directory with inputs  
+- [x] get rid of .tree.treefile file names 
 - CAVE: iqtree3 now may provide alrt branch support values as well. Need to test whether possvm is able to handle it. 
 
+GeneRax  
+- implement basic GeneRax  functionality  
+
+
+BCA  
+- update the README   
+- the functions have to be modular   
+- alignment trimming function - separate     
+- execution timing  
+
+Notes   
+
+Which commands depend on alignment trimming with the trimming used by default? `easy-phylo` and `blastology`  

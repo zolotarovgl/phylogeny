@@ -21,26 +21,30 @@ def align(fasta_file, output_file, ncpu, mafft_opt, verbose = True):
     if verbose:
         logging.info(f"Alignment done: {output_file}")
 
-def trim(input_file,output_file,mode = "kpic-gappy", g = "0.7",logfile = '/dev/null 2>&1',verbose = True):
+def clipkit_trim(input_file,output_file,mode = "kpic-gappy", g = "0.7",logfile = '/dev/null 2>&1',verbose = True):
     cmd = f"clipkit {input_file} -m {mode} -o {output_file} -g {g} > {logfile}"
     if verbose:
         logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
 
-def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode = "kpic-gappy",clipkit_g = 0.7, clean = True, logfile = '/dev/null',verbose = True):
+def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode = "kpic-gappy",clipkit_g = 0.7, clean = True, notrim = False, logfile = '/dev/null',verbose = True):
     if not os.path.exists(input_file):
         logging.error(f"{input_file} doesn't exist")
         sys.exit(1)
     tmpfile = input_file + '.tmp'
     
-    align(input_file,tmpfile,ncpu = ncpu,mafft_opt = mafft_opt,verbose = verbose)
-    trim(tmpfile,output_file,mode = clipkit_mode,g = clipkit_g,logfile = logfile,verbose = verbose)
+    do_trim = not notrim
+    if do_trim:
+        align(input_file,tmpfile,ncpu = ncpu,mafft_opt = mafft_opt,verbose = verbose)
+        clipkit_trim(tmpfile,output_file,mode = clipkit_mode,g = clipkit_g,logfile = logfile,verbose = verbose)
+        if clean:
+            cmd = f"rm {tmpfile}"
+            #logging.info(cmd)
+            subprocess.run(cmd, shell=True, check=True)
+    else:
+        align(input_file,output_file,ncpu = ncpu,mafft_opt = mafft_opt,verbose = verbose)
 
-    if clean:
-        cmd = f"rm {tmpfile}"
-        #logging.info(cmd)
-        subprocess.run(cmd, shell=True, check=True)
 
 # Phylogeny wrappers
 def get_node_support_range(treefile):
@@ -197,7 +201,7 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt
         subprocess.run(cmd, shell=True, check=True)
 
 
-def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = False):
+def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = True, logging = None):
     if method == 'mmseqs2':
         cmd = f"mmseqs easy-cluster -s 7.5 --cov-mode 0 --cluster-mode 2 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
         if verbose:

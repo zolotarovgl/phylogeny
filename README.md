@@ -3,7 +3,31 @@
 git clone --recurse-submodules https://github.com/zolotarovgl/phylogeny.git
 ```
 
-# Examples  
+# Commands   
+
+
+```bash
+usage: main.py [-h] {hmmsearch,cluster,align,phylogeny,generax,possvm,easy-phylo,blastology} ...
+
+Python wrapper around some useful commands
+
+positional arguments:
+  {hmmsearch,cluster,align,phylogeny,generax,possvm,easy-phylo,blastology}
+                        Sub-command help
+    hmmsearch           Search for a family using HMMER
+    cluster             Run clustering
+    align               Run alignment
+    phylogeny           Run IQTREE2 for an alignment in --fasta
+    generax             Run GeneRax [NOT IMPLEMENTED]
+    possvm              Run POSSVM
+    easy-phylo          Build a phylogeny from a single fasta
+    blastology          Search query sequences in proteomes and annotate using phylogenies
+```
+
+
+
+
+# Commmand xamples  
 
 ### HMMSEARCH
 Use the gene family info in `data/genefam.tsv` to search for proteins and to group them into defined gene families.  
@@ -28,11 +52,11 @@ Finally, it will parse the resulting trees and will output the best orthologs fo
 
 Use the reference sequences for search. For instance, given the reference sequences stored in `data/BCL2.fasta`, search `data/sample.fasta` for homologs in species `Owefus` using 10 cores:  
 ```bash
-python main.py blastology --query data/BCL2.fasta -r data/BCL2.names  --target data/sample.fasta -c 10 --force --soi Owefus --outputfile Owenia_bcl2.tab
+python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --target data/sample.fasta -c 5 --force --soi Owefus --outputfile Owenia_bcl2.tab --phymethod fasttree
 ```
-Not specifying `--soi` will return the annotation file with all sequences in the orthogroups with queries.  
+Not specifying `--soi` (species of interest) will return the annotation file with all sequences in the orthogroups with queries.  
 
-__QUERY FORMATTING:__  
+#### QUERY FORMATTING  
 It's important that the query names are formatted as following:  
 ```
 >Hsap_QUERY_P10415
@@ -55,7 +79,7 @@ The names (2nd column) can be any, but try to keep them distinguishable!
 
 CAVE: iqtree3 now may provide alrt branch support values as well. Need to test whether possvm is able to handle it. 
 
-Run a simple phylogeny: mafft - iqtree3 - possvm using 16 threads. 
+Run a simple phylogeny: mafft - iqtree3 - possvm using 16 threads. The results will be saved to `outdir`
 ```bash
-python main.py easy-phylo -f data/arp23.fasta -c 16 --outdir results
+python main.py easy-phylo --method fasttree -f data/arp23.fasta -c 16 --outdir results
 ```

@@ -8,7 +8,7 @@ import yaml
 from Bio import SeqIO
 
 from helper.hmmsearch import hmmsearch
-from helper.s02_cluster import cluster
+#from helper.s02_cluster import cluster 
 from helper.functions import align_and_trim
 from helper.functions import phylogeny
 from helper.functions import possvm
@@ -69,15 +69,21 @@ if __name__ == "__main__":
     parser_search.add_argument('--domain_expand',required=False, default = "50", help='Expand domain ranges to X aminoacids in both directions. Default: 50')
     parser_search.add_argument('-c', '--ncpu', required=False, default = int(1),  help='Number of CPU cores to use')
     parser_search.add_argument('--keep', required=False, default = False, action = 'store_true', help='Use this to keep temporary files')
+    
     # Cluster
-    parser_cluster = subparsers.add_parser('cluster', help='Run clustering')
+    parser_cluster = subparsers.add_parser('cluster', 
+                                           help="Run clustering of the sequences",
+                                           description = """Cluster sequences in provided fasta file.
+                                           If the top cluster contains >= max_n sequences, recluster.""")
     parser_cluster.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
-    parser_cluster.add_argument('--out_file', required=False, default = None, help='Output file. CAVE: should be named PREFIX_cluster.tsv')
+    parser_cluster.add_argument('--out_file', required=False, default = None, help='Output clustering file. CAVE: for legacy reasons, should be named PREFIX_cluster.tsv')
     parser_cluster.add_argument('--out_prefix', required=False,default = None, help='Output file prefix. Vis --out_file.')
     parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use. Default: 1')
     parser_cluster.add_argument('-t', '--temp_dir', required=False, default = "tmp/", help='Temporary directory name. Default: tmp/')
     parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
     parser_cluster.add_argument('-m', '--maxn', default = int(1000), help='Maximum number of sequences in the cluster. Default: 1000')
+    parser_cluster.add_argument('--method', default = "diamond_mcl", help='Clustering method. Default: diamond_mcl')
+    parser_cluster.add_argument('--cluster_prefix', default = "HG", help='Cluster name prefix. Default: HG (i.e. HG1, HG2, ...)')
 
     # Alignment
     parser_align = subparsers.add_parser('align', help='Run alignment')
@@ -85,7 +91,15 @@ if __name__ == "__main__":
     parser_align.add_argument('-o', '--outfile', required=True, help='Output file')
     parser_align.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
     parser_align.add_argument('-m', '--mafft', required=False, default ="", help='Mafft alignment options. Default  "", you can set it to --maxiterate 1000 --genafpair')
-    
+    parser_align.add_argument('--notrim', required=False, default = False, action = 'store_true', help='Use this to skip the alignment trimming step')
+
+    # Alignment
+    parser_trim = subparsers.add_parser('trim', help='Trim alignment')
+    parser_trim.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
+    parser_trim.add_argument('-o', '--outfile', required=True, help='Output file')
+    parser_trim.add_argument('-l', '--logfile', required=False, default = None, help='Log file')
+    parser_trim.add_argument('-m', '--method', required=False, default ="clipkit", help='Alignment trimming method. Default: clipkit')
+
     # Phylogeny
     parser_phylogeny = subparsers.add_parser('phylogeny', help='Run IQTREE2 for an alignment in --fasta')
     parser_phylogeny.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
@@ -176,7 +190,7 @@ if __name__ == "__main__":
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
-        clustering_method = 'diamond_mcl'
+        #clustering_method = 'diamond_mcl'
         
         
         infasta = args.fasta
@@ -184,23 +198,31 @@ if __name__ == "__main__":
         cluster_log = 'tmp/cluster.log'
         ncpu = args.ncpu 
         max_N = int(args.maxn) # maximum number of sequences in the biggest cluster
- 
+        clustering_method = args.method
+        do_recluster = True # use for iterative reclusering  
+
 
         if not args.out_file and not args.out_prefix:
-            print("Provide either --out_file or --out_prefix for clustering command!")
+            logging.error("Provide either --out_file or --out_prefix for clustering command!")
             sys.exit(1) 
         elif not args.out_file and args.out_prefix:
-            print('out_prefix provided')
+            #print('out_prefix provided')
             out_prefix = args.out_prefix
         elif not args.out_prefix and args.out_file:
-            print('out_file provided')
+            # if out_file provided, try to guess the extension of the output file 
+            if not args.out_file.endswith('_cluster.tsv'):
+                logging.error('--out_file should end in "_cluster.tsv"!')
+                sys.exit(1)
             out_prefix = args.out_file.replace('_cluster.tsv','')
         else:
-            print("Provide either --out_file or --out_prefix for clustering command!")
-        # should create {out_prefix}_cluster.tsv 
-        cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = args.inflation)
+            logging.error("Provide either --out_file or --out_prefix for clustering command!")
+            sys.exit(1)
         cluster_file = out_prefix + '_cluster.tsv'
-
+        
+        # should create {out_prefix}_cluster.tsv 
+        cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = args.cluster_prefix, mcl_inflation = args.inflation, logging = logging)
+        
+        # Report the results 
         def top_n(file_path):
             counts = {}
             with open(file_path, 'r') as file:
@@ -208,37 +230,52 @@ if __name__ == "__main__":
                     first_col = line.split('\t')[0]  # Get the first column
                     counts[first_col] = counts.get(first_col, 0) + 1
                 # Sort by counts (descending) and get the most common value
-            return max(counts.values())
+            return (len(counts),max(counts.values()))
 
-        max_N_obs = top_n(cluster_file)
-        logging.info(f'{cluster_file}: max observed number of sequences: {max_N_obs}')
+        N_seqs = functions.count_seqs(args.fasta)
+        N,max_N_obs = top_n(cluster_file)
+        logging.info(f'{cluster_file}: {N_seqs} sequences => {N} clusters. Maximum cluster size: {max_N_obs}')
         
-       
-        if max_N_obs > max_N:
-            logging.error(f'N sequences in the biggest cluster is more ({max_N_obs}) than allowed ({max_N})!')
-            logging.info('Trying to recluster with higher inflation...')
-            max_N_obs = top_n(cluster_file)
-            inflation = args.inflation
-            iteration = 0
-            max_iterations = 100
-
-            while max_N_obs > max_N and iteration < max_iterations:
-                inflation += 0.1
-                inflation = round(inflation,1)
-                cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
+        if do_recluster:
+            if max_N_obs > max_N:
+                logging.error(f'N sequences in the biggest cluster is more ({max_N_obs}) than allowed ({max_N})!')
+                logging.info('Trying to recluster with higher inflation...')
                 max_N_obs = top_n(cluster_file)
-                logging.info(f'Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}')
-                iteration += 1
-            if iteration >= max_iterations:
-                logging.error(f'Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
-                sys.exit(1)
-            else:
-                logging.info(f'Iterative clustering finished: Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}') 
+                inflation = args.inflation
+                iteration = 0
+                max_iterations = 100
+
+                while max_N_obs > max_N and iteration < max_iterations:
+                    inflation += 0.1
+                    inflation = round(inflation,1)
+                    cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
+                    max_N_obs = top_n(cluster_file)
+                    logging.info(f'Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}')
+                    iteration += 1
+                if iteration >= max_iterations:
+                    logging.error(f'Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
+                    sys.exit(1)
+                else:
+                    logging.info(f'Iterative clustering finished: Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}') 
 
 
     elif args.command == 'align':
         logging.info("Command: Align")
-        align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft)
+        # --notrim - triggers skipping alignment trimming 
+        functions.align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft, notrim = args.notrim)
+
+    elif args.command == 'trim':
+        logging.info("Command: trim")
+        # trim(input_file,output_file,mode = "kpic-gappy", g = "0.7",logfile = '/dev/null 2>&1',verbose = True)
+        if args.method == 'clipkit':
+            logfile = args.logfile
+            if not logfile:
+                logfile = '/dev/null 2>&1'
+            functions.clipkit_trim(input_file = args.fasta, output_file = args.outfile, mode = "kpic-gappy", g = "0.7",logfile = logfile, verbose = True)
+        else:
+            logging.error(f'trim: unknown alignment trimming method: {args.method}')
+            sys.exit(1)
+        logging.info(f'trim: Done. Output file: {args.outfile}. Log: {args.logfile}')
 
     elif args.command == 'phylogeny':
         logging.info("Command: Phylogeny")
@@ -307,7 +344,7 @@ if __name__ == "__main__":
         if os.path.isfile(fname_aln) and not force:
             print(f'Found alignment file: {fname_aln}! Skipping alignment')
         else:
-            align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = mafft_opt,logfile = log_aln)
+            align_and_trim(input_file = args.fasta, output_file = fname_aln, ncpu = args.ncpu, mafft_opt = mafft_opt,logfile = log_aln, notrim = False)
         if os.path.isfile(fname_tree) and not force:
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
