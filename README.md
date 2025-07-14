@@ -18,7 +18,7 @@ positional arguments:
     cluster             Run clustering
     align               Run alignment
     phylogeny           Run IQTREE2 for an alignment in --fasta
-    generax             Run GeneRax [NOT IMPLEMENTED]
+    generax             Run GeneRax 
     possvm              Run POSSVM
     easy-phylo          Build a phylogeny from a single fasta
     blastology          Search query sequences in proteomes and annotate using phylogenies
@@ -94,12 +94,10 @@ python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --t
 
 
 # Generax   
-
 To use GeneRax, install it from source (`https://github.com/BenoitMorel/GeneRax`) or from conda (`https://anaconda.org/bioconda/generax`).
 
 
 GeneRax Example:  
-
 
 ```bash
 python main.py generax \
