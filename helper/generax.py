@@ -94,13 +94,6 @@ def run_generax(config_file,species_tree,rec_model = 'UndatedDL',max_spr = 7,str
 	logging.info(cmd)
 	subprocess.run(cmd, shell=True, check=True)
 
-####################
-
-#python main.py align -f $INFASTA -o test/Tubulin.aln -c 10
-#python main.py easy-phylo -f $INFASTA -c 12 --method iqtree2
-#python main.py phylogeny -f test/Tubulin.aln -c 12 --outfile test/Tubulin.tree --method fasttree
-#python helper/create_generax_config.py --name TEST --alignment test/Tubulin.aln --tree test/Tubulin.tree --output Tubulin.fam --model LG+G
-#generax -s species_tree.newick -f Tubulin.fam --per-family-rates -r UndatedDL -p results_generax --max-spr-radius 1 --strategy SPR 
 
 
 if __name__ == "__main__":
@@ -118,12 +111,6 @@ if __name__ == "__main__":
 	parser.add_argument('-o','--outfile', required=False, default = None, help='Name of the output tree file')
 
 	args = parser.parse_args()
-
-	logging.basicConfig(
-		level=logging.INFO,
-		format='%(asctime)s - %(levelname)s - %(message)s',
-		datefmt='%Y-%m-%d %H:%M:%S'
-	)
 
 	# Check files
 	if not os.path.isfile(args.alignment):
@@ -147,6 +134,11 @@ if __name__ == "__main__":
 			print(f"Error: IQ-TREE file doesn't exist! {args.iqtree_file}")
 			sys.exit(1)
 
+	logging.basicConfig(
+		level=logging.INFO,
+		format='%(asctime)s - %(levelname)s - %(message)s',
+		datefmt='%Y-%m-%d %H:%M:%S')
+
 	subs_model = args.subs_model or extract_model(args.iqtree_file)
 	output_dir = args.output_dir
 	if not os.path.isdir(output_dir):
@@ -158,17 +150,27 @@ if __name__ == "__main__":
 	else:
 		output_file = args.outfile
 
+	name = args.name
+	gene_tree = args.gene_tree
+	alignment = args.alignment 
+	species_tree = args.species_tree
+	max_spr = args.max_spr
+	per_family_rates =  args.per_family_rates
+	cpus = args.cpus
+
 	create_generax_config(
-		name=args.name,
-		alignment_file=args.alignment,
-		tree_file=args.gene_tree,
+		name=name,
+		alignment_file=alignment,
+		tree_file=gene_tree,
 		output_file=config_file,
 		subst_model=subs_model
 	)
 
 	logging.info(f'Created: {config_file}')
 
-	run_generax(config_file = config_file, species_tree = args.species_tree, rec_model = 'UndatedDL', max_spr = args.max_spr, per_family_rates = args.per_family_rates, ncpu = args.cpus)
+
+	run_generax(config_file = config_file, species_tree = species_tree, rec_model = 'UndatedDL', max_spr = max_spr, per_family_rates = per_family_rates, ncpu = cpus)
+	
 	# copy the results 
 	result = f'{output_dir}/results/{args.name}/geneTree.newick'
 	if os.path.isfile(result):

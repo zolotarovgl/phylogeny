@@ -41,11 +41,6 @@ def load_config():
 
 # Pipelines # 
 
-def run_generax(hg_id):
-    logging.info(f"Running GeneRax for homology group: {hg_id}")
-    raise(NotImplementedError())
-    pass
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""
     Python wrapper around some useful commands
@@ -109,10 +104,19 @@ if __name__ == "__main__":
     parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
 
     # GeneRax
-    parser_generax = subparsers.add_parser('generax', help='Run GeneRax [NOT IMPLEMENTED]')
-    parser_generax.add_argument('-t','--tree', required = True, help='Species tree')
-    parser_generax.add_argument('-f','--fasta', required = True, help='Alignment file')
-    parser_generax.add_argument('-o','--outdir', required = True, help='Output folder')
+    parser_generax = subparsers.add_parser('generax', help='Run GeneRax')
+    parser_generax.add_argument('--name', required=True, help='Family name')
+    parser_generax.add_argument('--alignment', required=True, help='Path to alignment file')
+    parser_generax.add_argument('--gene_tree', required=True, help='Path to gene tree file')
+    parser_generax.add_argument('--species_tree', required=True, help='Path to species tree file')
+    parser_generax.add_argument('--output_dir', required=True, help='Path to output directory')
+    parser_generax.add_argument('--subs_model', help='Substitution model (e.g. LG+G)')
+    parser_generax.add_argument('--iqtree_file', help='Optional IQ-TREE .iqtree file to extract model')
+    parser_generax.add_argument('--per-family-rates', required=False, default = True, action = 'store_true', help='Whether to use per family rates')
+    parser_generax.add_argument('--max-spr', required=False, default = int(5), help='Maximum SPR radius')
+    parser_generax.add_argument('-c','--cpus', required=False, default = int(1), help='Number of CPU cores')
+    parser_generax.add_argument('-o','--outfile', required=False, default = None, help='Name of the output tree file')
+
 
     # POSSVM
     parser_possvm = subparsers.add_parser('possvm', help='Run POSSVM')
@@ -299,8 +303,25 @@ if __name__ == "__main__":
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")
-        raise(NotImplementedError())
-        #run_generax()
+        print(args)
+
+        script = "helper/generax.py"
+        cmd = (
+            f"python {script} "
+            f"--name {args.name} "
+            f"--alignment {args.alignment} "
+            f"--gene_tree {args.gene_tree} "
+            f"--species_tree {args.species_tree} "
+            f"--output_dir {args.output_dir} "
+            f"--subs_model {args.subs_model} "
+            f"--max-spr {args.max_spr} "
+            f"--cpus {args.cpus} "
+            f"--outfile {args.outfile}"
+        )
+
+        logging.info(cmd)
+        subprocess.run(cmd, shell=True, check=True)
+        quit()
 
     elif args.command == 'possvm':
         min_support_transfer = float(args.possvm_minsupport)

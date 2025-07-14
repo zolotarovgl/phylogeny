@@ -100,8 +100,9 @@ To use GeneRax, install it from source (`https://github.com/BenoitMorel/GeneRax`
 
 GeneRax Example:  
 
-```bash 
-python helper/generax.py \
+
+```bash
+python main.py generax \
   --name Tubulin \
   --alignment generax_test/Tubulin.aln \
   --gene_tree generax_test/Tubulin.tree \
