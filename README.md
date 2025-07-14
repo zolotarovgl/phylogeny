@@ -112,5 +112,3 @@ python helper/generax.py \
   --cpus 1 \
   --outfile updated.tree
 ```
-`GeneRax` can work with multiple gene families.
-This will create `results_generax` directory with a
