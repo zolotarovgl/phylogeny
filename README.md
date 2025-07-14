@@ -27,7 +27,7 @@ positional arguments:
 
 
 
-# Commmand xamples  
+# Commmand Examples  
 
 ### HMMSEARCH
 Use the gene family info in `data/genefam.tsv` to search for proteins and to group them into defined gene families.  
