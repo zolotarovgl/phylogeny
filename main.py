@@ -125,6 +125,8 @@ if __name__ == "__main__":
     parser_possvm.add_argument('-o','--ogprefix', default = "OG", help='String. Prefix for ortholog clusters. Defaults to "OG".')
     parser_possvm.add_argument('-s','--refsps', default = None, help='POSSVM reference species')
     parser_possvm.add_argument('--min_support_transfer', default = "50",dest = "possvm_minsupport", help='POSSVM Minimum support for label transfer')
+    parser_possvm.add_argument('--itermidroot', default = "10", help='Number of rooting iterations')
+    parser_possvm.add_argument('-l','--logfile', default = "/dev/null", help='the log')
     
     # EASY-PHYLO
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
@@ -238,14 +240,15 @@ if __name__ == "__main__":
 
         N_seqs = functions.count_seqs(args.fasta)
         N,max_N_obs = top_n(cluster_file)
+        print(top_n(cluster_file))
         logging.info(f'{cluster_file}: {N_seqs} sequences => {N} clusters. Maximum cluster size: {max_N_obs}')
         
         if do_recluster:
             if max_N_obs > max_N:
                 logging.error(f'N sequences in the biggest cluster is more ({max_N_obs}) than allowed ({max_N})!')
                 logging.info('Trying to recluster with higher inflation...')
-                max_N_obs = top_n(cluster_file)
-                inflation = args.inflation
+                N,max_N_obs = top_n(cluster_file)
+                inflation = float(args.inflation)
                 iteration = 0
                 max_iterations = 100
 
@@ -253,7 +256,7 @@ if __name__ == "__main__":
                     inflation += 0.1
                     inflation = round(inflation,1)
                     cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
-                    max_N_obs = top_n(cluster_file)
+                    N,max_N_obs = top_n(cluster_file)
                     logging.info(f'Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}')
                     iteration += 1
                 if iteration >= max_iterations:
@@ -327,7 +330,7 @@ if __name__ == "__main__":
         min_support_transfer = float(args.possvm_minsupport)
         #if not os.path.exists('submodules/possvm-orthology/possvm.py'):
         #    logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
-        possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix, refsps = args.refsps, min_support_transfer = min_support_transfer)
+        possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix, refsps = args.refsps, min_support_transfer = min_support_transfer,logfile = args.logfile,itermidroot = int(args.itermidroot))
 
     elif args.command == 'easy-phylo':
 

@@ -154,8 +154,11 @@ def phylogeny_fasttree(fasta_file, output_file, logfile = ''):
     logging.info(f'Created {output_file}')
 
 
-def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG", possvm = 'submodules/possvm-orthology/possvm.py',logfile = '/dev/null',refsps = None,min_support_transfer = 50):
-    logging.info(f"Possvm: {treefile}\nLog: {logfile}")
+def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG", possvm = 'submodules/possvm-orthology/possvm.py',logfile = False,refsps = None,min_support_transfer = 50, itermidroot = 10):
+    if logfile:
+        logging.info(f"Possvm: {treefile}\nLog: {logfile}")
+    else:
+        logfile = '/dev/null'
     # Adjust min_support according to the value range in provided tree 
     if not os.path.isfile(treefile):
         logging.error(f'ERROR: {treefile} does not exist!')
@@ -178,8 +181,11 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
         reference_species = f"-refsps {refsps}" 
     else:
         reference_species = ""
-    cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot 10 -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} >> {logfile} 2>&1"
+    
+
+    cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} >> {logfile} 2>&1"
     logging.info(cmd)
+    os.system(f'echo "{cmd}" > {logfile}')    
     subprocess.run(cmd, shell=True, check=True)
 
 # Phylo-search functions 
