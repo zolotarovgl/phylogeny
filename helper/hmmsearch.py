@@ -27,6 +27,7 @@ def fetch_hmm(hmm,pfam_db,outfile):
         logging.error(f"Specified PFAM database ({pfam_db}) doesn't exist. Specify using --pfam_db option!")
         sys.exit(1)
     cmd = f"hmmfetch {pfam_db} {hmm} > {outfile}"
+    logging.info(cmd)
     try:
         subprocess.run(cmd, shell=True, check=True)
     except subprocess.CalledProcessError as e:
