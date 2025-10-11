@@ -48,6 +48,19 @@ Main outputs:
 - `bet.Insulin.domains.csv` - domain ranges .bed file   
 - `bet.Insulin.seqs.fasta` - full protein sequences  
 
+### Clustering   
+
+
+An example of an iteartive re-clustering for a case where the biggest cluster exceeds the maximum number of sequences (`-m`):  
+
+
+```bash
+python main.py cluster -f data/cluster_test.fasta --out_prefix boo -c 4 -i 2 -m 70
+```
+
+__TODOs:__ add inflation step, add a possibility of keeping a cluster if fails, add letter suffixes instead of re-numbering  
+
+
 
 ### BLASTOLOGY 
 The tool will use BLASTP to search, then it will cluster the sequences with MCL&diamond and run the phylogeny for each cluster. 

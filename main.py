@@ -415,7 +415,7 @@ if __name__ == "__main__":
                         #print(f'{new_id} : {len(v)}')
                         hg_ind += 1
                     
-                    cluster_file_new = 'new_cluster.tsv'
+                    cluster_file_new = cluster_file
                     with open(cluster_file_new, "w") as f:
                         for hg, genes in sorted_renamed.items():
                             for gene in genes:
