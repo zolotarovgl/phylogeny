@@ -79,7 +79,7 @@ It's important that the query names are formatted as following:
 >Mmus_QUERY_P10417
 >Dmel_QUERY_Q7KM33
 ```
-First prefix MUST correspond to prefixes in Xavi's databas to not to mess up the species reconciliation. It's also good to include the word `QUERY` in the name. 
+First prefix __MUST__ correspond to prefixes in Xavi's database to not to mess up the species reconciliation. It's also good to include the word `QUERY` in the name to be able to search for queries later on.  
 The `.names` file should be map the names in the fasta to the protein names (these will be used for name transfer):   
 ```
 Hsap_QUERY_P10415       hsapBCL2
@@ -91,6 +91,13 @@ The names (2nd column) can be any, but try to keep them distinguishable!
 **TODO**: add species prefix check - strict and not. Request that all the reference species are present in the target file.
 
 
+The results should look like the following:  
+```bash
+cat Owenia_bcl2.tab 
+Owefus_OFUSG13935.2     search.OG0:dmelBCL2     0.997   dmelBCL2        0.84
+Owefus_OFUSG16636.1     search.OG3:hsapBCL2/mmusBCL2    0.956   hsapBCL2/mmusBCL2       0.956/0.956
+Owefus_OFUSG14207.1     search.OG3:hsapBCL2/mmusBCL2    0.956   hsapBCL2/mmusBCL2       0.956/0.956
+```
 
 # Tests   
 
