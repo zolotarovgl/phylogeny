@@ -51,7 +51,7 @@ Main outputs:
 ### Clustering   
 
 
-An example of an iteartive re-clustering for a case where the biggest cluster exceeds the maximum number of sequences (`-m`):  
+An example of an iterative re-clustering for a case where the biggest cluster exceeds the maximum number of sequences (`-m`):  
 
 
 ```bash
