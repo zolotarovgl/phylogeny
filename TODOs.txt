@@ -11,10 +11,10 @@ GENERAL
 - Sequence reclustering after initial clusters have been built - to include distant homologs in the species of interest
 
 CLUSTERING  
+- [x] better iterative clustering handling   
+- [x] move cluster filtering from the main
 - solve the issue with multiple "cluster" functions - there is one in main and the other one in blastology  
-- better iterative clustering handling   
 - mmseqs2 clustering - implement iterative clustering   
-- move cluster filtering from the main
 - MMSeqs clustering should output a canonical clustering file - akin to broccoli and mcl (each cluster per line) => update parsing functions!
 
 
