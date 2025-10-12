@@ -51,11 +51,11 @@ Main outputs:
 ### Clustering   
 
 
-An example of an iterative re-clustering for a case where the biggest cluster exceeds the maximum number of sequences (`-m`):  
+An example of an iterative re-clustering for a case where the biggest cluster exceeds the maximum number of sequences (`-m`) staring from a 1.1 inflation & with an inflation step of 1 (`--inflation_step`):    
 
 
 ```bash
-python main.py cluster -f data/cluster_test.fasta --out_prefix boo -c 4 -i 2 -m 70
+python main.py cluster -f data/cluster_test.fasta --out_prefix boo -c 4 -i 1.1 -m 50 --inflation_step 1
 ```
 
 __TODOs:__ add inflation step, add a possibility of keeping a cluster if fails, add letter suffixes instead of re-numbering  

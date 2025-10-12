@@ -76,9 +76,11 @@ if __name__ == "__main__":
     parser_cluster.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use. Default: 1')
     parser_cluster.add_argument('-t', '--temp_dir', required=False, default = "tmp/", help='Temporary directory name. Default: tmp/')
     parser_cluster.add_argument('-i', '--inflation', default = float(1.1), help='Inflation parameter for MCL clustering')
+    parser_cluster.add_argument('--inflation_step', default = float(0.1), help='Inflation parameter step for re-clustering')
     parser_cluster.add_argument('-m', '--maxn', default = int(1000), help='Maximum number of sequences in the cluster. Default: 1000')
     parser_cluster.add_argument('--method', default = "diamond_mcl", help='Clustering method. Default: diamond_mcl')
     parser_cluster.add_argument('--cluster_prefix', default = "HG", help='Cluster name prefix. Default: HG (i.e. HG1, HG2, ...)')
+    
 
     # Alignment
     parser_align = subparsers.add_parser('align', help='Run alignment')
@@ -88,7 +90,7 @@ if __name__ == "__main__":
     parser_align.add_argument('-m', '--mafft', required=False, default ="", help='Mafft alignment options. Default  "", you can set it to --maxiterate 1000 --genafpair')
     parser_align.add_argument('--notrim', required=False, default = False, action = 'store_true', help='Use this to skip the alignment trimming step')
 
-    # Alignment
+    # Trimming
     parser_trim = subparsers.add_parser('trim', help='Trim alignment')
     parser_trim.add_argument('-f','--fasta', required=True, help='Path to the input fasta file')
     parser_trim.add_argument('-o', '--outfile', required=True, help='Output file')
@@ -197,6 +199,7 @@ if __name__ == "__main__":
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
         #clustering_method = 'diamond_mcl'
+        from helper import subcluster as subcl
         
         
         infasta = args.fasta
@@ -228,34 +231,9 @@ if __name__ == "__main__":
         # should create {out_prefix}_cluster.tsv 
         cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = args.cluster_prefix, mcl_inflation = args.inflation, logging = logging)
         
-        # Report the results 
-        def top_n(file_path):
-            counts = {}
-            with open(file_path, 'r') as file:
-                for line in file:
-                    first_col = line.split('\t')[0]  # Get the first column
-                    counts[first_col] = counts.get(first_col, 0) + 1
-                # Sort by counts (descending) and get the most common value
-            return (len(counts),max(counts.values()))
-
-        def cluster_counts(file_path):
-            counts = {}
-            with open(file_path, 'r') as file:
-                for line in file:
-                    first_col = line.split('\t')[0]  # Get the first column
-                    counts[first_col] = counts.get(first_col, 0) + 1
-                # Sort by counts (descending) and get the most common value
-            return (counts)
-        
-        def top_n(file_path):
-            counts = cluster_counts(file_path)
-            return (len(counts),max(counts.values()))
-
-
-
         N_seqs = functions.count_seqs(args.fasta)
-        N,max_N_obs = top_n(cluster_file)
-        print(top_n(cluster_file))
+        N,max_N_obs = subcl.top_n(cluster_file)
+        print(subcl.top_n(cluster_file))
         logging.info(f'{cluster_file}: {N_seqs} sequences => {N} clusters. Maximum cluster size: {max_N_obs}. Max allowed: {max_N}')
         
 
@@ -269,16 +247,16 @@ if __name__ == "__main__":
                 if recluster_mode == 'global':
                     logging.error(f'N sequences in the biggest cluster is more ({max_N_obs}) than allowed ({max_N})!')
                     logging.info('Trying to recluster with higher inflation...')
-                    N,max_N_obs = top_n(cluster_file)
+                    N,max_N_obs = subcl.top_n(cluster_file)
                     inflation = float(args.inflation)
                     iteration = 0
-                    max_iterations = 100
+                    max_iterations = 30
 
                     while max_N_obs > max_N and iteration < max_iterations:
                         inflation += 0.1
                         inflation = round(inflation,1)
                         cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
-                        N,max_N_obs = top_n(cluster_file)
+                        N,max_N_obs = subcl.top_n(cluster_file)
                         logging.info(f'Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}')
                         iteration += 1
                     if iteration >= max_iterations:
@@ -288,112 +266,34 @@ if __name__ == "__main__":
                         logging.info(f'Iterative clustering finished: Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}') 
                 
                 elif recluster_mode == 'local':
-                    
-
-                    def extract_sequences(fasta_file, ids_file, output_file):
-                        # Read the list of IDs from the file
-                        with open(ids_file, 'r') as f:
-                            ids_to_extract = set(line.strip() for line in f)
-                        
-                        # Parse the FASTA file and extract sequences
-                        with open(output_file, 'w') as output_handle:
-                            for record in SeqIO.parse(fasta_file, 'fasta'):
-                                if record.id in ids_to_extract:
-                                    SeqIO.write(record, output_handle, 'fasta')
-                    def cluster_dict(file_path):
-                        clusters = {}
-                        with open(file_path) as f:
-                            for line in f:
-                                cols = line.strip().split('\t')
-                                if not cols:
-                                    continue
-                                cluster = cols[0]
-                                clusters.setdefault(cluster, []).append(cols[1])
-                        return clusters
-                    
-                    def recluster_global(info_pref,fasta_file,out_prefix,temp_dir,logfile,ncpu,clustering_method,cluster_prefix,inflation, max_N,max_iterations = 100,inflation_step = 0.1, verbose = False,logging = logging):
-                        inflation = float(inflation) + float(inflation_step)
-                        max_N = int(max_N)
-                        logging.info(f'{info_pref}: Trying to recluster with higher inflation...')
-                        cluster_file = out_prefix + '_cluster.tsv'
-                        iteration = 0
-                        cluster(fasta_file = fasta_file,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method, cluster_prefix = cluster_prefix, mcl_inflation = inflation, verbose = verbose, logging = logging)
-                        N,max_N_obs = top_n(cluster_file)
-                        while max_N_obs > max_N and iteration < max_iterations:
-                            inflation += inflation_step
-                            inflation = round(inflation,1)
-                            cluster(fasta_file = fasta_file,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method, cluster_prefix = cluster_prefix, mcl_inflation = inflation, verbose = verbose,logging = logging)
-                            N,max_N_obs = top_n(cluster_file)
-                            logging.info(f'{info_pref}: Iteration: {iteration}; Inflation: {inflation}; N clusters: {N}; N max: {max_N_obs}')
-                            iteration += 1
-                        if iteration >= max_iterations:
-                            logging.error(f'{info_pref}: Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
-                            sys.exit(1)
-                        else:
-                            logging.info(f'{info_pref}: Iterative clustering finished: Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}') 
-                    
-                    clusters = cluster_dict(cluster_file)
-
-                    counts = cluster_counts(cluster_file)
-                    print(counts)
+                    # Recluster the HGs exceeding the threshold while keeping the others 
+                    clusters = subcl.cluster_dict(cluster_file)
+                    counts = subcl.cluster_counts(cluster_file)                    
                     too_big = [k for k,v in counts.items() if v >= max_N]
                     logging.info(f'{len(too_big)} clusters exceeding max_N {max_N}: {",".join(too_big)}')
-                    # recluster the biggest clusters exceeding the size threshold
-                    # how to re-cluster a specific cluster? 
-
-                    ###########################################################
-                    # Recluster the hg that's too big 
-                    ###########################################################
-                    def recluster_hg_local(hg_id,sequence_ids,fasta_file,temp_dir,ncpu,max_N,inflation = 1.1,inflation_step = 0.1, max_iterations = 10, verbose = False):
-                        #hg_id = too_big[0]
-                        #ids = clusters[hg_id]
-        
-                        temp_hg = os.path.join(temp_dir, hg_id)
-                        os.makedirs(temp_dir, exist_ok=True)
-                        os.makedirs(temp_hg, exist_ok = True)
-                        ids_file = os.path.join(temp_hg,'ids.txt')
-                        hg_fasta = os.path.join(temp_hg,'ids.fasta')
-                        with open(ids_file,"w") as f:
-                            f.write("\n".join(sequence_ids))
-                        logging.info(f'ids written to: {ids_file}')
-                        extract_sequences(ids_file = ids_file,fasta_file = fasta_file,output_file = hg_fasta)    
-                        # recluster the hgs 
-                        out_pref = temp_hg + '/cluster'
-                        logging.info(f'Re-clusetring: {temp_hg}: {out_pref}')
-                        
-                        recluster_global(info_pref = hg_id,fasta_file = hg_fasta,out_prefix = out_pref,
-                                        temp_dir = temp_hg , logfile = None,ncpu = ncpu,
-                                        clustering_method = args.method, max_N = max_N, max_iterations = max_iterations, 
-                                        inflation = inflation,inflation_step = inflation_step,cluster_prefix = hg_id + ".",
-                                        verbose = verbose)
-                        subcluster_file = out_pref + '_cluster.tsv'
-                        counts = cluster_counts(subcluster_file)
-                        logging.info(f'Iterative reclustering done: {hg_id}: {subcluster_file}')
-                        return(subcluster_file)
 
                     cluster_files = []
+                    cluster_status = []
                     for hg_id in too_big:
-                        #print("-------------------------------------------")
-                        #print(hg_id)
                         ids = clusters[hg_id]
-                        out = recluster_hg_local(hg_id = hg_id,sequence_ids = ids, fasta_file = args.fasta, temp_dir = temp_dir,ncpu = args.ncpu,max_N = args.maxn, inflation = args.inflation, inflation_step = 0.5,max_iterations = 100,verbose = False)
-                        cluster_files.append(out)
-                    # TODOs: concatenate the cluster files
-                    #print(cluster_files)
+                        file,status = subcl.recluster_hg_local(args = args,hg_id = hg_id,sequence_ids = ids, fasta_file = args.fasta, 
+                                                               temp_dir = temp_dir,ncpu = args.ncpu,max_N = args.maxn, inflation = args.inflation, inflation_step = float(args.inflation_step),
+                                                               max_iterations = 30,verbose = False)
+                        cluster_files.append(file)
+                        cluster_status.append(status)
+
+                    logging.info(f'{sum(cluster_status)} / {len(cluster_status)} clusters sucessfully reclustered.')
                     clusters_subclust = {}
                     for cluster_file in cluster_files:
-                        d = cluster_dict(cluster_file)
+                        d = subcl.cluster_dict(cluster_file)
                         for k,v in d.items():
                             clusters_subclust.update({k:v})
-                    # now, read it the initial clutter dict 
-                    cluster_file_init = "boo_cluster.tsv"
-                    clusters_init = cluster_dict(cluster_file_init)
-                    #print([k for k in clusters_init.keys()])
-                    #print([k for k in clusters_subclust.keys()])
-                    # now, how do we append them? can we sort them by the sizes? 
+ 
+ 
+                    cluster_file_init = cluster_file
+                    clusters_init = subcl.cluster_dict(cluster_file_init)
                     keep = [k for k in clusters_init.keys() if not k in too_big]
-                    #print(keep)
-                    # concatenate the ones 
+                    # Concatenate and rename the clusters 
                     clusters_result = {}
                     for k,v in clusters_init.items():
                         if k in keep:
@@ -403,16 +303,13 @@ if __name__ == "__main__":
 
 
                     sorted_clusters = dict(sorted(clusters_result.items(), key=lambda x: len(x[1]), reverse=True))
-                    #for k,v in sorted_clusters.items():
-                    #        print(f'{k}: {len(v)}')
-                    # rename them
-                    #print("--------")
+
+
                     sorted_renamed = {}
                     hg_ind = 1
                     for k,v in sorted_clusters.items():
                         new_id = "HG" + str(hg_ind)
                         sorted_renamed.update({new_id : v})
-                        #print(f'{new_id} : {len(v)}')
                         hg_ind += 1
                     
                     cluster_file_new = cluster_file
@@ -422,13 +319,10 @@ if __name__ == "__main__":
                                 f.write(f"{hg}\t{gene}\n")
                     logging.info(f'Clusters after re-clusteing: {cluster_file_new}')
                     N_seqs = functions.count_seqs(args.fasta)
-                    N,max_N_obs = top_n(cluster_file_new)
-                    print(top_n(cluster_file_new))
+                    N,max_N_obs = subcl.top_n(cluster_file_new)
                     logging.info(f'{cluster_file}: {N_seqs} sequences => {N} clusters. Maximum cluster size: {max_N_obs}. Max allowed: {max_N}')
                 else:
-                    logging.info(f'Unknown clustering mode: {recluster_mode}')
-                    quit()
-
+                    logging.error(f'Unknown clustering mode: {recluster_mode}')
 
     elif args.command == 'align':
         logging.info("Command: Align")
