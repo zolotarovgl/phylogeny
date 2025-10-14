@@ -72,6 +72,8 @@ python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --t
 ```
 Not specifying `--soi` (species of interest) will return the annotation file with all sequences in the orthogroups with queries.  
 
+
+
 #### QUERY FORMATTING  
 It's important that the query names are formatted as following:  
 ```
@@ -98,6 +100,18 @@ Owefus_OFUSG13935.2     search.OG0:dmelBCL2     0.997   dmelBCL2        0.84
 Owefus_OFUSG16636.1     search.OG3:hsapBCL2/mmusBCL2    0.956   hsapBCL2/mmusBCL2       0.956/0.956
 Owefus_OFUSG14207.1     search.OG3:hsapBCL2/mmusBCL2    0.956   hsapBCL2/mmusBCL2       0.956/0.956
 ```
+
+### Example
+Below is an example of how to fetch the sequences from the uniprot, rename them and run the blastology to get Owefus orthologs: 
+```bash
+python helper/fetch_uniprot.py data/PAX9.uniprot.txt  > test.fasta
+# to the names file (from the fasta headers)
+cat test.fasta | grep '>' | sed 's/>//g' | tr '.' '\t' | awk '{print $1"."$2"\t"$2}' > test.names
+python main.py blastology --query test.fasta --refnames test.names --target data/sample.fasta -c 5 --force --soi Owefus --outputfile test.tab --phymethod fasttree --mafft ""
+```
+
+
+
 
 # Tests   
 

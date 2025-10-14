@@ -31,10 +31,16 @@ for line in r.text.splitlines():
 			parts = h.split("_")
 			db_acc = parts[0].split("|")
 			species = parts[-1]
+			
 			if species in species_dict and do_rename:
 				species = species_dict[species]
 			if len(db_acc) == 3:
-				new_id = f"{species}_QUERY_{db_acc[1]}.{db_acc[2]}"
+				acc = db_acc[1]
+				protein_name = db_acc[2]
+				if protein_name == acc:
+					print(f'ERROR: could not find a proper protein name for {acc}! Remove it from the list')
+					quit()
+				new_id = f"{species}_QUERY_{acc}.{protein_name}"
 			else:
 				print("ERROR: Don't know how to process the header:")
 				print(db_acc)
@@ -47,3 +53,5 @@ if out_file:
 		out.write("\n".join(renamed) + "\n")
 else:
 	print("\n".join(renamed))
+
+
