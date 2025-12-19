@@ -168,7 +168,7 @@ def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefi
             logging.info(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
             #functions.phylogeny_fasttree(fasta_file = fname_aln, output_file = fname_tree)
-            phylogeny(fasta_file = fname_aln, output_file = fname_tree,ntmax = ncpu,method = phy_method)
+            phylogeny(fasta_file = fname_aln, output_file = fname_tree,output_prefix = tree_prefix,ntmax = ncpu,method = phy_method)
 
         if os.path.isfile(fname_possvm) and not force:
             logging.info(f'Found POSSVM file: {fname_tree}! Skipping')

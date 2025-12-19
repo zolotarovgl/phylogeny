@@ -33,7 +33,8 @@ def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode =
         logging.error(f"{input_file} doesn't exist")
         sys.exit(1)
     tmpfile = input_file + '.tmp'
-    
+    if mafft_opt == 'fast':
+        mafft_opt = ""
     do_trim = not notrim
     if do_trim:
         align(input_file,tmpfile,ncpu = ncpu,mafft_opt = mafft_opt,verbose = verbose)
@@ -96,7 +97,9 @@ def phylogeny(fasta_file,output_file, output_prefix = None, ntmax = 1,method = '
 
     logging.info(f'Phylogeny: {method}')
     check_binary(method,logging)
-    
+    if not output_prefix:
+        print(f'ERROR: phylogeny: specify the output prefix!')
+
     if method == 'iqtree2':
         phylogeny_iqtree2(fasta_file = fasta_file,output_file = output_file,output_prefix = output_prefix,ntmax = ntmax,logfile = logfile)
     if method == 'iqtree3':
@@ -115,11 +118,15 @@ def phylogeny_iqtree2(fasta_file, output_file = None, output_prefix = None, mode
     # iqtree creates the files given a prefix {PREFIX}.treefile 
     # If the output file name provided and ends in .tree - use as a prefix 
     logging.info(f"Phylogeny iqtree2: {fasta_file} {output_file}")
+    if not output_prefix:
+        print(f'ERROR: specify output prefix!')
+        quit()
+    
     # the prefix is being parsed from the output file name 
     
     #output_prefix = phylogeny_get_prefix(output_file = output_file, output_prefix = output_prefix)
 
-    cmd = f"{iqtree2} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -pre {output_prefix} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
+    cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     #logging.info(f'IQTREE2: Created {output_prefix}.treefile')
@@ -148,13 +155,23 @@ def phylogeny_fasttree(fasta_file, output_file, logfile = ''):
         logfile = ''
     if logfile:
         logfile = f'-log {logfile}' 
-    cmd = f"fasttree {logfile} -quiet -gtr {fasta_file} > {output_file} 2>&1"
+    cmd = f"fasttree {logfile} -quiet -gtr {fasta_file} | grep -v Ignoring > {output_file} 2>&1"
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     logging.info(f'Created {output_file}')
 
 
-def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG", possvm = 'submodules/possvm-orthology/possvm.py',logfile = False,refsps = None,min_support_transfer = 50, itermidroot = 10):
+def possvm(treefile,
+            output_prefix = None,
+            reference_names = None, 
+            ogprefix = "OG", 
+            possvm = 'submodules/possvm-orthology/possvm.py',
+            logfile = False,
+            refsps = None,
+            min_support_transfer = 50,
+            itermidroot = 10,
+            sos = 0,
+            outgroup = ""):
     if logfile:
         logging.info(f"Possvm: {treefile}\nLog: {logfile}")
     else:
@@ -182,8 +199,9 @@ def possvm(treefile,output_prefix = None,reference_names = None, ogprefix = "OG"
     else:
         reference_species = ""
     
-
-    cmd = f"python {possvm} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} >> {logfile} 2>&1"
+    if outgroup != '':
+        outgroup  = '--outgroup {outgroup}'
+    cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup} >> {logfile} 2>&1"
     logging.info(cmd)
     os.system(f'echo "{cmd}" > {logfile}')    
     subprocess.run(cmd, shell=True, check=True)

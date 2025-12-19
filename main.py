@@ -126,9 +126,12 @@ if __name__ == "__main__":
     parser_possvm.add_argument('-r','--refnames', default = None, help='Reference gene names: gene \t name.')
     parser_possvm.add_argument('-o','--ogprefix', default = "OG", help='String. Prefix for ortholog clusters. Defaults to "OG".')
     parser_possvm.add_argument('-s','--refsps', default = None, help='POSSVM reference species')
+    parser_possvm.add_argument('--sos', default = 0, help='POSSVM species overlap (--sos) param')
     parser_possvm.add_argument('--min_support_transfer', default = "50",dest = "possvm_minsupport", help='POSSVM Minimum support for label transfer')
     parser_possvm.add_argument('--itermidroot', default = "10", help='Number of rooting iterations')
     parser_possvm.add_argument('-l','--logfile', default = "/dev/null", help='the log')
+    parser_possvm.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
+   
     
     # EASY-PHYLO
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
@@ -138,6 +141,7 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('-r','--refnames', default = None, help='POSSVM: Reference gene names: gene \t name')
     parser_easyphylo.add_argument('--outdir', default = None, help='Optional: output directory. By default, the output files are written to the directory of the input file')
     parser_easyphylo.add_argument('--ogprefix', default = "OG", help='POSSVM: String. Prefix for ortholog clusters. Defaults to "OG".')
+    parser_easyphylo.add_argument('--sos', default = "0", help='POSSVM: --sos parameter. [0,1]. Default: 0')
     parser_easyphylo.add_argument('--force', required=False, default = False, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_easyphylo.add_argument('--method', default = "iqtree3", help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
@@ -388,7 +392,15 @@ if __name__ == "__main__":
         min_support_transfer = float(args.possvm_minsupport)
         #if not os.path.exists('submodules/possvm-orthology/possvm.py'):
         #    logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
-        possvm(treefile  = args.treefile,reference_names = args.refnames,ogprefix = args.ogprefix, refsps = args.refsps, min_support_transfer = min_support_transfer,logfile = args.logfile,itermidroot = int(args.itermidroot))
+        possvm(
+            treefile  = args.treefile,   
+            reference_names = args.refnames,
+            ogprefix = args.ogprefix,
+            refsps = args.refsps,
+            min_support_transfer = min_support_transfer,
+            logfile = args.logfile,
+            itermidroot = int(args.itermidroot),
+            sos = args.sos)
 
     elif args.command == 'easy-phylo':
 
@@ -397,10 +409,9 @@ if __name__ == "__main__":
         force = args.force
         method = args.method
         mafft = args.mafft
-
         
         mafft_opt = functions.pick_mafft(mafft,inputfasta, max_n = 500, maxiterate = 1000, logging = logging)
-        
+        print(mafft_opt)
         if args.outdir is None:
             fname_aln = os.path.splitext(inputfasta)[0] + '.aln'
             tree_prefix = os.path.splitext(inputfasta)[0] + '.tree'
@@ -415,6 +426,7 @@ if __name__ == "__main__":
             fname_aln = os.path.join(outdir, basename + '.aln')
             tree_prefix = os.path.join(outdir, basename + '.tree')
 
+        print(tree_prefix)
         fname_tree = tree_prefix + ".treefile"
         
         log_aln = f'{os.path.dirname(fname_tree)}/alignment.log'
@@ -430,13 +442,22 @@ if __name__ == "__main__":
         if os.path.isfile(fname_tree) and not force:
             print(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
-            phylogeny(fasta_file = fname_aln, output_file = fname_tree,ntmax = args.ncpu, method = method, logfile = log_phy)
+            phylogeny(fasta_file = fname_aln, output_file = fname_tree,output_prefix = tree_prefix,ntmax = args.ncpu, method = method, logfile = log_phy)
         min_support_transfer = float(args.easyphylo_minsupport)
         
-        possvm(treefile = fname_tree,reference_names = args.refnames,ogprefix = args.ogprefix,min_support_transfer = min_support_transfer, logfile = log_possvm)
-        
+        if args.refnames:
+            possvm(
+                    treefile = fname_tree,
+                    reference_names = args.refnames,
+                    ogprefix = args.ogprefix,
+                    min_support_transfer = min_support_transfer, 
+                    logfile = log_possvm,
+                    sos = float(args.sos),
+                    outgroup = args.outgroup)
+            fname_out = f'{fname_tree}.ortholog_groups.csv'
+        else: 
+            fname_out = fname_tree
         # Check the output:
-        fname_out = f'{fname_tree}.ortholog_groups.csv'
         if not os.path.exists(fname_out):
             raise FileNotFoundError(f'Expected output not found: {fname_out}')
         else:

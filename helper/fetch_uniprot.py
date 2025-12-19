@@ -1,3 +1,4 @@
+# givn a file with Uniprot ids, fetch the sequences 
 import sys, requests, re
 
 if len(sys.argv) < 2:
