@@ -90,49 +90,54 @@ def check_binary(program,logging):
         logging.info(f'Found {program}')
 
 
-def phylogeny(fasta_file,output_file, output_prefix = None, ntmax = 1,method = 'iqtree3',logfile = '/dev/null'):
 
-    import shutil
-    import logging
+def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtree3', logfile='/dev/null'):
 
-    logging.info(f'Phylogeny: {method}')
-    check_binary(method,logging)
-    if not output_prefix:
-        print(f'ERROR: phylogeny: specify the output prefix!')
+	logging.info(f'Phylogeny: {method}')
+	check_binary(method, logging)
 
-    if method == 'iqtree2':
-        phylogeny_iqtree2(fasta_file = fasta_file,output_file = output_file,output_prefix = output_prefix,ntmax = ntmax,logfile = logfile)
-    if method == 'iqtree3':
-        phylogeny_iqtree3(fasta_file = fasta_file,output_file = output_file, output_prefix = output_prefix,ntmax = ntmax,logfile = logfile)
-    elif method == 'fasttree':
-        #outfile = output_prefix + ".treefile"
-        phylogeny_fasttree(fasta_file,output_file,logfile = logfile)
-    if not os.path.isfile(output_file):
-        logging.error('Phylogeny has failed. Can not find {output_file}! Aborting ...')
-        sys.exit(1)
+	if not output_prefix:
+		logging.error('ERROR: phylogeny: specify the output prefix!')
+		sys.exit(1)
 
-def phylogeny_iqtree2(fasta_file, output_file = None, output_prefix = None, model = 'TEST', cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2",logfile = '/dev/null',verbose = True):
-    # Main output: {output_prefix}.treeflie
-    # phylogeny(fasta_file, output_prefix, cptime = 1000, nstop = 100, nm = 10000, ntmax = 15, bb = 1000, quiet = "",iqtree2 = "iqtree2")
+	if method == 'iqtree2':
+		phylogeny_iqtree2(fasta_file=fasta_file, output_file=output_file,
+						  output_prefix=output_prefix, ntmax=ntmax, logfile=logfile)
 
-    # iqtree creates the files given a prefix {PREFIX}.treefile 
-    # If the output file name provided and ends in .tree - use as a prefix 
-    logging.info(f"Phylogeny iqtree2: {fasta_file} {output_file}")
-    if not output_prefix:
-        print(f'ERROR: specify output prefix!')
-        quit()
-    
-    # the prefix is being parsed from the output file name 
-    
-    #output_prefix = phylogeny_get_prefix(output_file = output_file, output_prefix = output_prefix)
+	elif method == 'iqtree3':
+		phylogeny_iqtree3(fasta_file=fasta_file, output_file=output_file,
+						  output_prefix=output_prefix, ntmax=ntmax, logfile=logfile)
 
-    cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
-    logging.info(cmd)
-    subprocess.run(cmd, shell=True, check=True)
-    #logging.info(f'IQTREE2: Created {output_prefix}.treefile')
-    if output_file != f"{output_prefix}.treefile":
-        cmd = f"mv {output_prefix}.treefile {output_file}"
-        subprocess.run(cmd, shell=True, check=True)
+	elif method == 'fasttree':
+		phylogeny_fasttree(fasta_file, output_file, logfile=logfile)
+
+	if not os.path.isfile(output_file):
+		logging.error(f'Phylogeny has failed. Cannot find {output_file}! Aborting ...')
+		sys.exit(1)
+
+def phylogeny_iqtree2(fasta_file, output_file=None, output_prefix=None,
+					  model='TEST', cptime=1000, nstop=200, nm=1000,
+					  ntmax=15, bb=1000, quiet="",
+					  iqtree2="iqtree2", logfile='/dev/null', verbose=True):
+
+	logging.info(f"Phylogeny iqtree2: {fasta_file} {output_file}")
+
+	if not output_prefix:
+		logging.error('ERROR: specify output prefix!')
+		sys.exit(1)
+
+	cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
+	logging.info(cmd)
+
+	ret = subprocess.run(cmd, shell=True).returncode
+	if ret != 0:
+		sys.exit(ret)
+
+	if output_file != f"{output_prefix}.treefile":
+		mv_cmd = f"mv {output_prefix}.treefile {output_file}"
+		ret = subprocess.run(mv_cmd, shell=True).returncode
+		if ret != 0:
+			sys.exit(ret)
 
 
 def phylogeny_iqtree3(fasta_file, output_file = None, output_prefix = None, model = "MFP", cptime = 1000, nstop = 200, nm = 1000, ntmax = 15, bb = 1000, quiet = "",iqtree3 = "iqtree3",logfile = '/dev/null',verbose = True):
@@ -148,17 +153,23 @@ def phylogeny_iqtree3(fasta_file, output_file = None, output_prefix = None, mode
         cmd = f"mv {output_prefix}.treefile {output_file}"
         subprocess.run(cmd, shell=True, check=True)
 
+def phylogeny_fasttree(fasta_file, output_file, logfile=''):
 
-def phylogeny_fasttree(fasta_file, output_file, logfile = ''):
-    logging.info(f"Phylogeny: {fasta_file} {output_file}")
-    if logfile == '/dev/null':
-        logfile = ''
-    if logfile:
-        logfile = f'-log {logfile}' 
-    cmd = f"fasttree {logfile} -quiet -gtr {fasta_file} | grep -v Ignoring > {output_file} 2>&1"
-    logging.info(cmd)
-    subprocess.run(cmd, shell=True, check=True)
-    logging.info(f'Created {output_file}')
+	logging.info(f"Phylogeny fasttree: {fasta_file} {output_file}")
+
+	if logfile == '/dev/null':
+		logfile = ''
+	if logfile:
+		logfile = f'-log {logfile}'
+
+	cmd = f"fasttree {logfile} -quiet -gtr {fasta_file} | grep -v Ignoring > {output_file} 2>&1"
+	logging.info(cmd)
+
+	ret = subprocess.run(cmd, shell=True).returncode
+	if ret != 0:
+		sys.exit(ret)
+
+	logging.info(f'Created {output_file}')
 
 
 def possvm(treefile,
