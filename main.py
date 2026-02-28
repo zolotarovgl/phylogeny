@@ -103,7 +103,8 @@ if __name__ == "__main__":
     parser_phylogeny.add_argument('--outprefix', required=False, help='Output prefix for phylogeny files')
     parser_phylogeny.add_argument('--outfile', required=False, help='Output file name')
     parser_phylogeny.add_argument('-c', '--ncpu', required=True,  help='Number of CPU cores to use')
-    parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
+    parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: [fasttree, iqtree2, iqtree3]. Default: fasttree')
+    parser_phylogeny.add_argument('--iqtree2_model', required=False, default = "TEST",  help='IQTREE2 model. Default: TEST')
 
     # GeneRax
     parser_generax = subparsers.add_parser('generax', help='Run GeneRax')
@@ -115,9 +116,10 @@ if __name__ == "__main__":
     parser_generax.add_argument('--subs_model', help='Substitution model (e.g. LG+G)')
     parser_generax.add_argument('--iqtree_file', help='Optional IQ-TREE .iqtree file to extract model')
     parser_generax.add_argument('--per-family-rates', required=False, default = True, action = 'store_true', help='Whether to use per family rates')
-    parser_generax.add_argument('--max-spr', required=False, default = int(5), help='Maximum SPR radius')
+    parser_generax.add_argument('--max_spr', required=False, default = int(5), help='Maximum SPR radius')
     parser_generax.add_argument('-c','--cpus', required=False, default = int(1), help='Number of CPU cores')
     parser_generax.add_argument('-o','--outfile', required=False, default = None, help='Name of the output tree file')
+    parser_generax.add_argument('-l','--logfile', default = None, help='the log')
 
 
     # POSSVM
@@ -213,6 +215,7 @@ if __name__ == "__main__":
         max_N = int(args.maxn) # maximum number of sequences in the biggest cluster
         clustering_method = args.method
         do_recluster = True # use for iterative reclusering  
+        max_iterations = 100
 
 
         if not args.out_file and not args.out_prefix:
@@ -255,7 +258,7 @@ if __name__ == "__main__":
                     N,max_N_obs = subcl.top_n(cluster_file)
                     inflation = float(args.inflation)
                     iteration = 0
-                    max_iterations = 30
+                    
 
                     while max_N_obs > max_N and iteration < max_iterations:
                         inflation += 0.1
@@ -284,12 +287,17 @@ if __name__ == "__main__":
                         ids = clusters[hg_id]
                         file,status = subcl.recluster_hg_local(args = args,hg_id = hg_id,sequence_ids = ids, fasta_file = args.fasta, 
                                                                temp_dir = temp_dir,ncpu = args.ncpu,max_N = args.maxn, inflation = args.inflation, inflation_step = float(args.inflation_step),
-                                                               max_iterations = 30,verbose = True)
+                                                               max_iterations = max_iterations,verbose = True)
                         cluster_files.append(file)
                         cluster_status.append(status)
-
+                    
                     logging.info(f'{sum(cluster_status)} / {len(cluster_status)} clusters sucessfully reclustered.')
-                    # ---- Collect all reclustered clusters ----
+                    if sum(cluster_status) < len(cluster_status):
+                        logging.error("ERROR: some clusters have failed to be sub-clustered!")
+                        raise RuntimeError("Some clusters failed to be sub-clustered")
+                        
+                    
+                    # Collect the subclusters  
                     clusters_subclust = {}
 
                     for sub_file in cluster_files:
@@ -313,14 +321,13 @@ if __name__ == "__main__":
 
                     logging.info(f"Total clusters after merging: {len(clusters_result)}")
 
-                    # ---- Sort clusters by size (descending) ----
                     sorted_clusters = sorted(
                         clusters_result.items(),
                         key=lambda x: len(x[1]),
                         reverse=True
                     )
 
-                    # ---- Rename sequentially ----
+                   
                     sorted_renamed = {}
                     for i, (old_id, genes) in enumerate(sorted_clusters, start=1):
                         sorted_renamed[f"HG{i}"] = genes
@@ -439,13 +446,15 @@ if __name__ == "__main__":
                 logging.info(f'Phylogeny: Output prefix: {outprefix} => Output prefix: {outfile}')
 
         # the phylogeny function should receive either the output file or the output prefix value
-        phylogeny(fasta_file = args.fasta, output_file = outfile, output_prefix = outprefix,ntmax = args.ncpu, method = method)
+        phylogeny(fasta_file = args.fasta, output_file = outfile, output_prefix = outprefix,ntmax = args.ncpu, method = method,iqtree2_model = args.iqtree2_model)
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")
         print(args)
 
-        script = "helper/generax.py"
+        from pathlib import Path
+        script = Path(__file__).resolve().parent / "helper" / "generax.py"
+
         cmd = (
             f"python {script} "
             f"--name {args.name} "
@@ -454,14 +463,21 @@ if __name__ == "__main__":
             f"--species_tree {args.species_tree} "
             f"--output_dir {args.output_dir} "
             f"--subs_model {args.subs_model} "
-            f"--max-spr {args.max_spr} "
+            f"--max_spr {args.max_spr} "
             f"--cpus {args.cpus} "
+            f"--logfile {args.logfile} "
             f"--outfile {args.outfile}"
         )
 
         logging.info(cmd)
-        subprocess.run(cmd, shell=True, check=True)
-        quit()
+
+        result = subprocess.run(cmd, shell=True)
+
+        if args.logfile:
+            logging.info(f"Log: {args.logfile}")
+
+        # 🔥 Propagate exit code
+        sys.exit(result.returncode)
 
     elif args.command == 'possvm':
         min_support_transfer = float(args.possvm_minsupport)

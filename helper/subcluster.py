@@ -56,21 +56,40 @@ def recluster_global(info_pref,fasta_file,out_prefix,temp_dir,logfile,ncpu,clust
     iteration = 0
     cluster(fasta_file = fasta_file,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method, cluster_prefix = cluster_prefix, mcl_inflation = inflation, verbose = verbose, logging = logging)
     N,max_N_obs = top_n(cluster_file)
-    while max_N_obs > max_N and iteration < max_iterations and inflation <= 30:
+    while max_N_obs > max_N and iteration < max_iterations and inflation <= inflation_max:
         inflation += inflation_step
         inflation = round(inflation,1)
         cluster(fasta_file = fasta_file,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method, cluster_prefix = cluster_prefix, mcl_inflation = inflation, verbose = verbose,logging = logging)
         N,max_N_obs = top_n(cluster_file)
-        logging.info(f'{info_pref}: Iteration: {iteration}; Inflation: {inflation}; N clusters: {N}; N max: {max_N_obs}')
+        logging.info(f'{info_pref}: Iteration: {iteration} / {max_iterations}; Inflation: {inflation}; N clusters: {N}; N max: {max_N_obs}')
         iteration += 1
-    if iteration >= max_iterations:
-        logging.warning(f'{info_pref}: Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
+    
+    # Evaluate
+    if max_N_obs > max_N:
+        if iteration >= max_iterations:
+            logging.warning(
+                f'{info_pref}: Max iterations {max_iterations} reached '
+                f'and max cluster size ({max_N_obs}) is still > allowed ({max_N}).'
+            )
+        elif inflation >= inflation_max:
+            logging.warning(
+                f'{info_pref}: Maximum inflation {inflation_max} reached '
+                f'and max cluster size ({max_N_obs}) is still > allowed ({max_N}).'
+            )
+        else:
+            logging.warning(
+                f'{info_pref}: Reclustering stopped but max cluster size '
+                f'({max_N_obs}) still exceeds allowed ({max_N}).'
+            )
+
         status = False
-    if inflation >= inflation_max:
-        logging.warning(f'{info_pref}: Maximum inflation of {inflation_max} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
-        status = False
+
     else:
-        logging.info(f'{info_pref}: Iterative clustering finished: Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}') 
+        logging.info(
+            f'{info_pref}: Iterative clustering finished successfully: '
+            f'Iteration {iteration}; Inflation {inflation}; '
+            f'Max cluster size {max_N_obs}'
+        )
         status = True
     return(cluster_file,status)
 

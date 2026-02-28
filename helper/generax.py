@@ -71,30 +71,108 @@ def create_generax_config(name,alignment_file,tree_file, output_file, subst_mode
 		f.write(f"subst_model = {subst_model}\n")
 
 def check_binary(program,logging):
-    import shutil
-    if shutil.which(program) is None:
-        logging.error(f'{program} not found in PATH. Please install or load the binary.')
-        sys.exit(1)
-    else:
-        logging.info(f'Found {program}')
+	import shutil
+	if shutil.which(program) is None:
+		logging.error(f'{program} not found in PATH. Please install or load the binary.')
+		sys.exit(1)
+	else:
+		logging.info(f'Found {program}')
 
 
 # Function to launch generax
-def run_generax(config_file,species_tree,rec_model = 'UndatedDL',max_spr = 7,strategy = 'SPR', per_family_rates = True, ncpu = 1):
+def run_generax(config_file,species_tree,rec_model = 'UndatedDL',max_spr = 7,strategy = 'SPR', per_family_rates = True, ncpu = 1,logfile = None):
 
 	check_binary('generax',logging = logging)
 	check_binary('mpirun',logging = logging)
 
+	if not logfile:
+		logfile = "/dev/null 2>&1"
 	if per_family_rates:
 		per_family_rates = "--per-family-rates"
 	else:
 		per_family_rates = ""
 	#generax -s species_tree.newick -f Tubulin.fam --per-family-rates -r UndatedDL -p results_generax --max-spr-radius 1 --strategy SPR
-	cmd = f"mpirun --use-hwthread-cpus --oversubscribe -n {ncpu} generax -s {species_tree} -f {config_file} {per_family_rates} -r {rec_model} -p {output_dir} --max-spr-radius {max_spr} --strategy {strategy} > /dev/null 2>&1"
+	cmd = f"mpirun --use-hwthread-cpus --oversubscribe -n {ncpu} generax -s {species_tree} -f {config_file} {per_family_rates} -r {rec_model} -p {output_dir} --max-spr-radius {max_spr} --strategy {strategy} > {logfile}"
 	logging.info(cmd)
 	subprocess.run(cmd, shell=True, check=True)
 
+def run_generax(
+	config_file,
+	species_tree,
+	output_dir,
+	rec_model='UndatedDL',
+	max_spr=7,
+	strategy='SPR',
+	per_family_rates=True,
+	ncpu=1,
+	logfile=None
+):
 
+	check_binary('generax', logging=logging)
+	check_binary('mpirun', logging=logging)
+
+	cmd = [
+		"mpirun",
+		"--use-hwthread-cpus",
+		"--oversubscribe",
+		"-n", str(ncpu),
+		"generax",
+		"-s", species_tree,
+		"-f", config_file,
+		"-r", rec_model,
+		"-p", output_dir,
+		"--max-spr-radius", str(max_spr),
+		"--strategy", strategy,
+	]
+
+	if per_family_rates:
+		cmd.insert(cmd.index("-r"), "--per-family-rates")
+
+	logging.info("Running: %s", " ".join(cmd))
+
+	import subprocess
+	import sys
+
+	try:
+		if logfile is None:
+			subprocess.run(
+				cmd,
+				stdout=subprocess.DEVNULL,
+				stderr=subprocess.STDOUT,
+				check=True
+			)
+		else:
+			with open(logfile, "w") as log:
+				subprocess.run(
+					cmd,
+					stdout=log,
+					stderr=subprocess.STDOUT,
+					check=True
+				)
+
+	except subprocess.CalledProcessError as e:
+		logging.error(f"GeneRax failed with exit code {e.returncode}")
+		sys.exit(e.returncode)
+
+	
+	
+
+def check_species(fasta_file, species_tree_file):
+	import re
+	from pathlib import Path
+	tree_text = Path(species_tree_file).read_text()
+	species = set(re.findall(r'([^\s\(\),:;]+)', tree_text))
+
+	prefixes = {
+		rec.id.split('_')[0]
+		for rec in __import__('Bio.SeqIO').SeqIO.parse(fasta_file, "fasta")
+	}
+
+	missing = prefixes - species
+	if missing:
+		raise ValueError(f"Missing species in tree: {', '.join(sorted(missing))}")
+
+	return len(prefixes & species)
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="Run GeneRax")
@@ -106,11 +184,13 @@ if __name__ == "__main__":
 	parser.add_argument('--subs_model', help='Substitution model (e.g. LG+G)')
 	parser.add_argument('--iqtree_file', help='Optional IQ-TREE .iqtree file to extract model')
 	parser.add_argument('--per-family-rates', required=False, default = True, action = 'store_true', help='Whether to use per family rates')
-	parser.add_argument('--max-spr', required=False, default = int(5), help='Maximum SPR radius')
+	parser.add_argument('--max_spr', required=False, default = int(5), help='Maximum SPR radius')
 	parser.add_argument('-c','--cpus', required=False, default = int(1), help='Number of CPU cores')
 	parser.add_argument('-o','--outfile', required=False, default = None, help='Name of the output tree file')
+	parser.add_argument('-l','--logfile', default = None, help='the log')
 
 	args = parser.parse_args()
+	# Check if all the species prefixes are found in the fasta 
 
 	# Check files
 	if not os.path.isfile(args.alignment):
@@ -122,7 +202,7 @@ if __name__ == "__main__":
 		sys.exit(1)
 
 	if not os.path.isfile(args.species_tree):
-		print(f"Error: gene tree file doesn't exist! {args.species_tree}")
+		print(f"Error: species tree file doesn't exist! {args.species_tree}")
 		sys.exit(1)
 
 	if not args.subs_model and not args.iqtree:
@@ -157,7 +237,12 @@ if __name__ == "__main__":
 	max_spr = args.max_spr
 	per_family_rates =  args.per_family_rates
 	cpus = args.cpus
+	output_dir = args.output_dir
 
+	# check the consistency
+	check_species(alignment, species_tree)
+
+	# Create config
 	create_generax_config(
 		name=name,
 		alignment_file=alignment,
@@ -169,7 +254,7 @@ if __name__ == "__main__":
 	logging.info(f'Created: {config_file}')
 
 
-	run_generax(config_file = config_file, species_tree = species_tree, rec_model = 'UndatedDL', max_spr = max_spr, per_family_rates = per_family_rates, ncpu = cpus)
+	run_generax(config_file = config_file, species_tree = species_tree, output_dir = output_dir, logfile = args.logfile, rec_model = 'UndatedDL', max_spr = max_spr, per_family_rates = per_family_rates, ncpu = cpus)
 	
 	# copy the results 
 	result = f'{output_dir}/results/{args.name}/geneTree.newick'
