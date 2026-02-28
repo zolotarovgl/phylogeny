@@ -246,6 +246,7 @@ if __name__ == "__main__":
         # local - reclusters only the groups exceeding the threshold 
         if max_N_obs > max_N:
             recluster_mode = 'local'
+            #recluster_mode = 'global'
             if do_recluster:
                 logging.info(f'Reclustering mode: {recluster_mode}')
                 if recluster_mode == 'global':
@@ -259,9 +260,10 @@ if __name__ == "__main__":
                     while max_N_obs > max_N and iteration < max_iterations:
                         inflation += 0.1
                         inflation = round(inflation,1)
-                        cluster(fasta_file = args.fasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
+                        infasta = args.fasta
+                        cluster(fasta_file = infasta,out_prefix = out_prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = args.ncpu,method = clustering_method, cluster_prefix = "HG", mcl_inflation = inflation, verbose = False)
                         N,max_N_obs = subcl.top_n(cluster_file)
-                        logging.info(f'Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}')
+                        logging.info(f'Iteration: {iteration}\nFASTA: {infasta}\nInflation: {inflation}; N max: {max_N_obs}')
                         iteration += 1
                     if iteration >= max_iterations:
                         logging.error(f'Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
@@ -274,7 +276,7 @@ if __name__ == "__main__":
                     clusters = subcl.cluster_dict(cluster_file)
                     counts = subcl.cluster_counts(cluster_file)                    
                     too_big = [k for k,v in counts.items() if v >= max_N]
-                    logging.info(f'{len(too_big)} clusters exceeding max_N {max_N}: {",".join(too_big)}')
+                    logging.info(f'{cluster_file}: {len(too_big)} clusters exceeding max_N {max_N}: {",".join(too_big)}')
 
                     cluster_files = []
                     cluster_status = []
@@ -282,51 +284,124 @@ if __name__ == "__main__":
                         ids = clusters[hg_id]
                         file,status = subcl.recluster_hg_local(args = args,hg_id = hg_id,sequence_ids = ids, fasta_file = args.fasta, 
                                                                temp_dir = temp_dir,ncpu = args.ncpu,max_N = args.maxn, inflation = args.inflation, inflation_step = float(args.inflation_step),
-                                                               max_iterations = 30,verbose = False)
+                                                               max_iterations = 30,verbose = True)
                         cluster_files.append(file)
                         cluster_status.append(status)
 
                     logging.info(f'{sum(cluster_status)} / {len(cluster_status)} clusters sucessfully reclustered.')
+                    # ---- Collect all reclustered clusters ----
                     clusters_subclust = {}
-                    for cluster_file in cluster_files:
-                        d = subcl.cluster_dict(cluster_file)
-                        for k,v in d.items():
-                            clusters_subclust.update({k:v})
- 
- 
-                    cluster_file_init = cluster_file
-                    clusters_init = subcl.cluster_dict(cluster_file_init)
-                    keep = [k for k in clusters_init.keys() if not k in too_big]
-                    # Concatenate and rename the clusters 
-                    clusters_result = {}
-                    for k,v in clusters_init.items():
-                        if k in keep:
-                            clusters_result.update({k:v})
-                    for k,v in clusters_subclust.items():
-                            clusters_result.update({k:v})
 
+                    for sub_file in cluster_files:
+                        d = subcl.cluster_dict(sub_file)
+                        if not d:
+                            logging.warning(f"{sub_file} produced no clusters.")
+                            continue
+                        clusters_subclust.update(d)
 
-                    sorted_clusters = dict(sorted(clusters_result.items(), key=lambda x: len(x[1]), reverse=True))
+                    # ---- Load original clusters ----
+                    clusters_init = subcl.cluster_dict(cluster_file)
 
+                    # Keep clusters that were NOT reclustered
+                    clusters_result = {
+                        k: v for k, v in clusters_init.items()
+                        if k not in too_big
+                    }
 
+                    # Add reclustered clusters
+                    clusters_result.update(clusters_subclust)
+
+                    logging.info(f"Total clusters after merging: {len(clusters_result)}")
+
+                    # ---- Sort clusters by size (descending) ----
+                    sorted_clusters = sorted(
+                        clusters_result.items(),
+                        key=lambda x: len(x[1]),
+                        reverse=True
+                    )
+
+                    # ---- Rename sequentially ----
                     sorted_renamed = {}
-                    hg_ind = 1
-                    for k,v in sorted_clusters.items():
-                        new_id = "HG" + str(hg_ind)
-                        sorted_renamed.update({new_id : v})
-                        hg_ind += 1
-                    
-                    cluster_file_new = cluster_file
-                    with open(cluster_file_new, "w") as f:
+                    for i, (old_id, genes) in enumerate(sorted_clusters, start=1):
+                        sorted_renamed[f"HG{i}"] = genes
+
+                    # ---- Backup original file ----
+                    import shutil
+                    backup_file = cluster_file + ".tmp"
+                    shutil.copy(cluster_file, backup_file)
+                    logging.info(f"Previous clustering saved as: {backup_file}")
+
+                    # ---- Write final clustering ----
+                    with open(cluster_file, "w") as f:
                         for hg, genes in sorted_renamed.items():
                             for gene in genes:
                                 f.write(f"{hg}\t{gene}\n")
-                    logging.info(f'Clusters after re-clusteing: {cluster_file_new}')
+
+                    logging.info(f"Clusters after re-clustering written to: {cluster_file}")
+
+                    # ---- Stats ----
                     N_seqs = functions.count_seqs(args.fasta)
-                    N,max_N_obs = subcl.top_n(cluster_file_new)
-                    logging.info(f'{cluster_file}: {N_seqs} sequences => {N} clusters. Maximum cluster size: {max_N_obs}. Max allowed: {max_N}')
+                    N, max_N_obs = subcl.top_n(cluster_file)
+
+                    logging.info(
+                        f"{cluster_file}: {N_seqs} sequences => {N} clusters. "
+                        f"Maximum cluster size: {max_N_obs}. Max allowed: {max_N}"
+                    )
+                    # CAVE: these results should be appended!
                 else:
                     logging.error(f'Unknown clustering mode: {recluster_mode}')
+        ################################################################################
+        # Create homology group fastas: 
+        from pathlib import Path
+        from collections import defaultdict
+        from Bio import SeqIO
+
+        def split_clusters_to_fastas(cluster_tsv, input_fasta, out_prefix):
+            """
+            Create per-cluster FASTA files from cluster TSV output.
+
+            Parameters
+            ----------
+            cluster_tsv : str or Path
+                TSV file with: clusterID <tab> sequenceID
+            domains_fasta : str or Path
+                FASTA file containing all sequences
+            out_prefix : str
+                Prefix for output FASTA files
+            """
+
+            cluster_tsv = Path(cluster_tsv)
+            domains_fasta = Path(input_fasta)
+
+            # Read cluster assignments
+            clusters = defaultdict(list)
+
+            with cluster_tsv.open() as f:
+                for line in f:
+                    cluster_id, seq_id = line.strip().split("\t")
+                    clusters[cluster_id].append(seq_id)
+
+            if not clusters:
+                print("No clusters found.")
+                return
+
+            # Load all sequences into memory (fast and simple)
+            seq_dict = SeqIO.to_dict(SeqIO.parse(input_fasta, "fasta"))
+
+            # Write one FASTA per cluster
+            for cluster_id, seq_ids in clusters.items():
+                output_file = Path(f"{out_prefix}.{cluster_id}.fasta")
+
+                with output_file.open("w") as out_handle:
+                    for sid in seq_ids:
+                        if sid in seq_dict:
+                            SeqIO.write(seq_dict[sid], out_handle, "fasta")
+
+                print(f"Created {output_file}")
+        split_clusters_to_fastas(cluster_tsv = cluster_file,input_fasta = args.fasta,out_prefix = out_prefix )
+
+
+
 
     elif args.command == 'align':
         logging.info("Command: Align")

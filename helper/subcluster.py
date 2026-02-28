@@ -48,7 +48,7 @@ def cluster_dict(file_path):
     return clusters
 
 
-def recluster_global(info_pref,fasta_file,out_prefix,temp_dir,logfile,ncpu,clustering_method,cluster_prefix,inflation, max_N,max_iterations = 30,inflation_step = 0.1, verbose = False,logging = logging,cluster_log = None):
+def recluster_global(info_pref,fasta_file,out_prefix,temp_dir,logfile,ncpu,clustering_method,cluster_prefix,inflation, max_N,max_iterations = 30,inflation_step = 0.1, verbose = False,logging = logging,cluster_log = None,inflation_max = 100):
     inflation = float(inflation) + float(inflation_step)
     max_N = int(max_N)
     logging.info(f'{info_pref}: Trying to recluster with higher inflation...')
@@ -66,8 +66,8 @@ def recluster_global(info_pref,fasta_file,out_prefix,temp_dir,logfile,ncpu,clust
     if iteration >= max_iterations:
         logging.warning(f'{info_pref}: Max iterations {max_iterations} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
         status = False
-    if inflation >= 30:
-        logging.warning(f'{info_pref}: Maximum inflation of 30.0 reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
+    if inflation >= inflation_max:
+        logging.warning(f'{info_pref}: Maximum inflation of {inflation_max} reached and the max N seqs is still more ({max_N_obs}) than allowed ({max_N})!')
         status = False
     else:
         logging.info(f'{info_pref}: Iterative clustering finished: Iteration: {iteration}; Inflation: {inflation}; N max: {max_N_obs}') 
@@ -75,7 +75,6 @@ def recluster_global(info_pref,fasta_file,out_prefix,temp_dir,logfile,ncpu,clust
     return(cluster_file,status)
 
 def recluster_hg_local(args,hg_id,sequence_ids,fasta_file,temp_dir,ncpu,max_N,inflation = 1.1,inflation_step = 0.1, max_iterations = 30, verbose = False,clustering_method = 'diamond_mcl'):
-
 
     temp_hg = os.path.join(temp_dir, hg_id)
     os.makedirs(temp_dir, exist_ok=True)
