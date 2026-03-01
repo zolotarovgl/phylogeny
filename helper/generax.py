@@ -174,6 +174,42 @@ def check_species(fasta_file, species_tree_file):
 
 	return len(prefixes & species)
 
+
+from ete3 import Tree
+
+
+def diagnose_tree(t):
+	non_binary = []
+	for node in t.traverse():
+		if not node.is_leaf() and len(node.children) != 2:
+			non_binary.append(node)
+	return non_binary
+
+
+def check_and_fix_tree(input_file, output_file, fail_if_nonbinary=False, format=1):
+	t = Tree(input_file, format=format)
+
+	non_binary_nodes = diagnose_tree(t)
+
+	if not non_binary_nodes:
+		logging.info(f'{input_file}: No polytomies found')
+		t.write(outfile=output_file)
+		return 0
+
+	
+	if fail_if_nonbinary:
+		logging.error(f'{input_file}: WARNING: {len(non_binary_nodes)} non-binary nodes found')
+		return 10
+
+	logging.info(f'{input_file}: WARNING: {len(non_binary_nodes)} non-binary nodes found. Resolving')
+	t.resolve_polytomy(recursive=True)
+
+	if diagnose_tree(t):
+		return 1
+
+	t.write(outfile=output_file)
+	return 0
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="Run GeneRax")
 	parser.add_argument('--name', required=True, help='Family name')
@@ -241,6 +277,9 @@ if __name__ == "__main__":
 
 	# check the consistency
 	check_species(alignment, species_tree)
+	
+	# resolve tree polytomies if present 
+	check_and_fix_tree(gene_tree, gene_tree, fail_if_nonbinary=False, format=1)
 
 	# Create config
 	create_generax_config(

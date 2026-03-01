@@ -135,6 +135,7 @@ python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --t
 GeneRax Example:  
 
 ```bash
+module load OpenMPI
 python main.py generax \
   --name Tubulin \
   --alignment generax_test/Tubulin.aln \
@@ -142,7 +143,8 @@ python main.py generax \
   --species_tree generax_test/species_tree.newick \
   --output_dir results_generax \
   --subs_model LG \
-  --max-spr 3 \
+  --max_spr 1 \
   --cpus 1 \
+  --logfile generax.log \
   --outfile updated.tree
 ```
