@@ -279,13 +279,14 @@ if __name__ == "__main__":
 	check_species(alignment, species_tree)
 	
 	# resolve tree polytomies if present 
-	check_and_fix_tree(gene_tree, gene_tree, fail_if_nonbinary=False, format=1)
+	fixed_tree = os.path.join(output_dir, "fixed_gene_tree.newick")
+	check_and_fix_tree(gene_tree, fixed_tree, fail_if_nonbinary=False, format=1)
 
 	# Create config
 	create_generax_config(
 		name=name,
 		alignment_file=alignment,
-		tree_file=gene_tree,
+		tree_file=fixed_tree,
 		output_file=config_file,
 		subst_model=subs_model
 	)
