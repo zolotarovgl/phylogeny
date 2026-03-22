@@ -104,6 +104,7 @@ if __name__ == "__main__":
     parser_phylogeny.add_argument('--outfile', required=False, help='Output file name')
     parser_phylogeny.add_argument('-c', '--ncpu', required=True,  help='Number of CPU cores to use')
     parser_phylogeny.add_argument('--method', required=False, default = "fasttree",  help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
+    parser_phylogeny.add_argument('--iqtree2_model', required=False, default = "TEST", help='IQ-TREE2 model selection argument. Default: TEST')
 
     # GeneRax
     parser_generax = subparsers.add_parser('generax', help='Run GeneRax')
@@ -364,7 +365,7 @@ if __name__ == "__main__":
                 logging.info(f'Phylogeny: Output prefix: {outprefix} => Output prefix: {outfile}')
 
         # the phylogeny function should receive either the output file or the output prefix value
-        phylogeny(fasta_file = args.fasta, output_file = outfile, output_prefix = outprefix,ntmax = args.ncpu, method = method)
+        phylogeny(fasta_file = args.fasta, output_file = outfile, output_prefix = outprefix,ntmax = args.ncpu, method = method, model = args.iqtree2_model)
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")

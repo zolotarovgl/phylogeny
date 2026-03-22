@@ -91,7 +91,7 @@ def check_binary(program,logging):
 
 
 
-def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtree3', logfile='/dev/null'):
+def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtree3', logfile='/dev/null', model='TEST'):
 
 	logging.info(f'Phylogeny: {method}')
 	check_binary(method, logging)
@@ -102,7 +102,7 @@ def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtr
 
 	if method == 'iqtree2':
 		phylogeny_iqtree2(fasta_file=fasta_file, output_file=output_file,
-						  output_prefix=output_prefix, ntmax=ntmax, logfile=logfile)
+						  output_prefix=output_prefix, ntmax=ntmax, logfile=logfile, model=model)
 
 	elif method == 'iqtree3':
 		phylogeny_iqtree3(fasta_file=fasta_file, output_file=output_file,
