@@ -187,7 +187,9 @@ def possvm(treefile,
 			min_support_transfer = 50,
 			itermidroot = 10,
 			sos = 0,
-			outgroup = ""):
+			outgroup = "",
+			phy = ""):
+
 	if logfile:
 		logging.info(f"Possvm: {treefile}\nLog: {logfile}")
 	else:
@@ -216,8 +218,12 @@ def possvm(treefile,
 		reference_species = ""
 	
 	if outgroup != '':
-		outgroup  = '--outgroup {outgroup}'
-	cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup} >> {logfile} 2>&1"
+		outgroup  = f'--outgroup {outgroup}'
+	
+	if phy != '':
+		phy =  f'--phy {phy}'
+	cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup}  {phy} >> {logfile} 2>&1"
+	#print(cmd)
 	logging.info(cmd)
 	os.system(f'echo "{cmd}" > {logfile}')    
 	subprocess.run(cmd, shell=True, check=True)
@@ -345,12 +351,12 @@ def check_dir(dirpath,force = False):
 from Bio import SeqIO
 
 def retrieve_sequences(input_fasta, output_fasta, ids_to_keep):
-    with open(output_fasta, "w") as outfile:
-        for record in SeqIO.parse(input_fasta, "fasta"):
-            if record.id in ids_to_keep:
-                SeqIO.write(record, outfile, "fasta")
+	with open(output_fasta, "w") as outfile:
+		for record in SeqIO.parse(input_fasta, "fasta"):
+			if record.id in ids_to_keep:
+				SeqIO.write(record, outfile, "fasta")
 
-    logging.info(f"Created {output_fasta}")
+	logging.info(f"Created {output_fasta}")
 
 
 def filter_clusters(cluster_file,fasta_file,query_ids_file,soi = None):

@@ -133,7 +133,7 @@ if __name__ == "__main__":
     parser_possvm.add_argument('--itermidroot', default = "10", help='Number of rooting iterations')
     parser_possvm.add_argument('-l','--logfile', default = "/dev/null", help='the log')
     parser_possvm.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
-   
+    parser_possvm.add_argument('-p','--phy', default = "", help='POSSVM: OPTIONAL: String. Prefix for output files. Defaults to `basename` of input phylogeny. Default behaviour will never overwrite original files, because it adds suffixes.')
     
     # EASY-PHYLO
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
@@ -450,7 +450,7 @@ if __name__ == "__main__":
 
     elif args.command == 'generax':
         logging.info("Command: GeneRax")
-        print(args)
+        
 
         from pathlib import Path
         script = Path(__file__).resolve().parent / "helper" / "generax.py"
@@ -483,6 +483,7 @@ if __name__ == "__main__":
         min_support_transfer = float(args.possvm_minsupport)
         #if not os.path.exists('submodules/possvm-orthology/possvm.py'):
         #    logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
+        print(args)
         possvm(
             treefile  = args.treefile,   
             reference_names = args.refnames,
@@ -491,7 +492,8 @@ if __name__ == "__main__":
             min_support_transfer = min_support_transfer,
             logfile = args.logfile,
             itermidroot = int(args.itermidroot),
-            sos = args.sos)
+            sos = args.sos,
+            phy = args.phy)
 
     elif args.command == 'easy-phylo':
 
@@ -537,6 +539,7 @@ if __name__ == "__main__":
         min_support_transfer = float(args.easyphylo_minsupport)
         
         if args.refnames:
+            
             possvm(
                     treefile = fname_tree,
                     reference_names = args.refnames,
@@ -544,7 +547,8 @@ if __name__ == "__main__":
                     min_support_transfer = min_support_transfer, 
                     logfile = log_possvm,
                     sos = float(args.sos),
-                    outgroup = args.outgroup)
+                    outgroup = args.outgroup,
+                    phy = args.phy)
             fname_out = f'{fname_tree}.ortholog_groups.csv'
         else: 
             fname_out = fname_tree
