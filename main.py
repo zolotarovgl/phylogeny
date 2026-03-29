@@ -493,6 +493,7 @@ if __name__ == "__main__":
             logfile = args.logfile,
             itermidroot = int(args.itermidroot),
             sos = args.sos,
+            outgroup = args.outgroup,
             phy = args.phy)
 
     elif args.command == 'easy-phylo':

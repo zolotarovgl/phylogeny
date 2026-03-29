@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import subprocess
 import csv
 import argparse
@@ -92,6 +93,8 @@ def do_hmmsearch(hmm,hmm_dir, out, fasta, cpu, threshold, pfam_db = None,verbose
 def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand = 50,verbose = False, do_clean = False):
     #prefix = gene_family_name
     fam_id = gene_family_name
+    combined_hits_file = f"{searches_dir}/{prefix}.{fam_id}.domtable.csv.tmp"
+    unmerged_hits_file = f"{searches_dir}/{prefix}.{fam_id}.domains_ummerged.csv"
     logging.info(f'Merging results ...')
     # Check for any hits
     cmd = f"cat {searches_dir}/{prefix}.{fam_id}.hmmsearch.*.domtable.csv.tmp | grep -v '#' | cut -f 1 | sort -u > {searches_dir}/{prefix}.{fam_id}.genes.list"
@@ -100,16 +103,18 @@ def merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expa
     num_hit_genes = int(subprocess.check_output(num_hit_genes_cmd, shell=True).strip().decode('utf-8'))
     logging.info(f"# {fasta_file}: {fam_id} | # genes found = {num_hit_genes}")
 
+    cmd = f"cat {searches_dir}/{prefix}.{fam_id}.hmmsearch.*.domtable.csv.tmp > {combined_hits_file}"
+    if verbose:
+        logging.info(cmd)
+    subprocess.run(cmd, shell=True, executable='/bin/bash', check=True)
+    shutil.copyfile(combined_hits_file, unmerged_hits_file)
+
     if num_hit_genes == 0:
         logging.info(f"# {fasta_file}: {fam_id} | Omit downstream analyses")
     else:
         # Find most-inclusive region that includes all domain hits in the protein
-        cmd = f"cat {searches_dir}/{prefix}.{fam_id}.hmmsearch.*.domtable.csv.tmp > {searches_dir}/{prefix}.{fam_id}.domtable.csv.tmp"
-        if verbose:
-            logging.info(cmd)
-        subprocess.run(cmd, shell=True, executable='/bin/bash', check=True)
         cmd = (
-            f"bedtools merge -i <(sort -k1,1 -k2,2n {searches_dir}/{prefix}.{fam_id}.domtable.csv.tmp) "
+            f"bedtools merge -i <(sort -k1,1 -k2,2n {combined_hits_file}) "
             f"-c 4 -o collapse -d 100000 > {searches_dir}/{prefix}.{fam_id}.domains.csv.tmp2 "
         )
         if verbose:
@@ -245,4 +250,3 @@ def hmmsearch(fasta_file, gene_family_info, gene_family_name, output_dir, pfam_d
     else:
         merge_results(prefix,gene_family_name, searches_dir, fasta_file, domain_expand,verbose = verbose, do_clean = do_clean)
     logging.info(f'Hmmsearch done: {output_dir}/')
-
