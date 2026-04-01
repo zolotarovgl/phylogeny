@@ -410,6 +410,18 @@ if __name__ == "__main__":
 
 
 
+        # Write per-cluster FASTA files: {out_prefix}.{cluster_id}.fasta
+        final_cluster_file = out_prefix + '_cluster.tsv'
+        clusters = subcl.cluster_dict(final_cluster_file)
+        fasta_index = SeqIO.index(args.fasta, "fasta")
+        for hg_id, seq_ids in clusters.items():
+            out_fasta = f"{out_prefix}.{hg_id}.fasta"
+            with open(out_fasta, "w") as fh:
+                for sid in seq_ids:
+                    if sid in fasta_index:
+                        SeqIO.write(fasta_index[sid], fh, "fasta")
+            logging.info(f"Written cluster FASTA: {out_fasta}")
+
     elif args.command == 'align':
         logging.info("Command: Align")
         # --notrim - triggers skipping alignment trimming 
