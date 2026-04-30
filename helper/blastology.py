@@ -91,7 +91,7 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
         ids_to_keep = clusters_renamed[cl_id]  # Replace with your list of IDs
         cluster_fasta = cluster_directory + "/" + cl_id +  ".fasta"
         cluster_fastas.append(cluster_fasta)
-        functions.retrive_sequences(joint_fasta_fname, cluster_fasta, ids_to_keep)
+        functions.retrieve_sequences(joint_fasta_fname, cluster_fasta, ids_to_keep)
     return(cluster_fastas)
 
 def parse_args(args):
