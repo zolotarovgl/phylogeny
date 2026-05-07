@@ -1,6 +1,7 @@
 import os
 import subprocess
 import csv
+import glob
 import logging
 import sys
 from helper import functions 
@@ -96,9 +97,6 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
     return(cluster_fastas)
 
 def parse_args(args):
-    
-    print(args)
-    
     min_n = 3 # minimal number of sequences in the cluster
     cluster_prefix = args.prefix + '.' + args.cluster_prefix # a prefix to add to the cluster 
     output_directory = args.output_dir
@@ -141,14 +139,60 @@ def get_results(cluster_directory,prefix,query_ids,soi = None,output_file = None
     if not output_file:
         logging.error('Specify output file!!!')
         quit()
-    cmd = f'cat  {cluster_directory}/{prefix}*groups.csv | grep -f <(cat {cluster_directory}/{prefix}*groups.csv | grep -f {query_ids} | cut -f 2 | sort | uniq)'
-    if soi:
-        cmd = cmd + f' | grep {soi} > {output_file}'
-    else:
-        cmd = cmd + f' > {output_file}'
-    if verbose > 1:
-        logging.info(cmd)
-    subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
+
+    with open(query_ids, "r") as handle:
+        query_id_set = {line.strip() for line in handle if line.strip()}
+
+    group_files = sorted(glob.glob(os.path.join(cluster_directory, f"{prefix}*groups.csv")))
+    if not group_files:
+        raise FileNotFoundError(
+            f"No ortholog-group files found in {cluster_directory} for prefix {prefix}"
+        )
+
+    matching_orthogroups = set()
+    rows = []
+
+    for group_file in group_files:
+        with open(group_file, "r") as handle:
+            reader = csv.reader(handle, delimiter="\t")
+            header = next(reader, None)
+            if not header:
+                logging.warning(f"Skipping empty ortholog-group file: {group_file}")
+                continue
+
+            try:
+                gene_idx = header.index("gene")
+                orthogroup_idx = header.index("orthogroup")
+            except ValueError as exc:
+                raise ValueError(
+                    f"{group_file} is missing required columns 'gene' and 'orthogroup'"
+                ) from exc
+
+            for row in reader:
+                if not row:
+                    continue
+                gene = row[gene_idx]
+                orthogroup = row[orthogroup_idx]
+                rows.append((gene, orthogroup, row))
+                if gene in query_id_set:
+                    matching_orthogroups.add(orthogroup)
+
+    filtered_rows = []
+    for gene, orthogroup, row in rows:
+        if orthogroup not in matching_orthogroups:
+            continue
+        if soi and soi not in gene:
+            continue
+        filtered_rows.append(row)
+
+    with open(output_file, "w", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t")
+        writer.writerows(filtered_rows)
+
+    logging.info(
+        f"Collected {len(filtered_rows)} annotation rows from "
+        f"{len(group_files)} ortholog-group files into {output_file}"
+    )
 
 def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefix = None,mafft_opt = None,phy_method = 'fasttree',force = True,ncpu = 1,verbose = False):
         input_file = os.path.join(cluster_directory,cl_id)
@@ -159,23 +203,25 @@ def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefi
         tree_prefix = os.path.splitext(cluster_fasta)[0]
         fname_tree = tree_prefix + ".tree"
         fname_possvm = fname_tree + ".ortholog_groups.csv"
-        logfile = os.path.join(cluster_directory,cl_id + '.log')
+        align_log = os.path.join(cluster_directory, cl_id + '.align.log')
+        phylogeny_log = os.path.join(cluster_directory, cl_id + '.phylogeny.log')
+        possvm_log = os.path.join(cluster_directory, cl_id + '.possvm.log')
         
         if os.path.isfile(fname_aln) and not force:
             logging.info(f'Found alignment file: {fname_aln}! Skipping alignment')
         else:
-            align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = mafft_opt, logfile = logfile,verbose = verbose, notrim = False)
+            align_and_trim(input_file = cluster_fasta, output_file = fname_aln, ncpu = ncpu, mafft_opt = mafft_opt, logfile = align_log,verbose = verbose, notrim = False)
         if os.path.isfile(fname_tree) and not force:
             logging.info(f'Found phylogeny file: {fname_tree}! Skipping alignment')
         else:
             #functions.phylogeny_fasttree(fasta_file = fname_aln, output_file = fname_tree)
-            phylogeny(fasta_file = fname_aln, output_file = fname_tree,output_prefix = tree_prefix,ntmax = ncpu,method = phy_method)
+            phylogeny(fasta_file = fname_aln, output_file = fname_tree,output_prefix = tree_prefix,ntmax = ncpu,method = phy_method, logfile = phylogeny_log)
 
         if os.path.isfile(fname_possvm) and not force:
             logging.info(f'Found POSSVM file: {fname_tree}! Skipping')
         else:
             og_pref = f'{prefix}.OG' if prefix else 'OG'
-            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = og_pref,min_support_transfer = 50)
+            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = og_pref,min_support_transfer = 50, logfile = possvm_log)
             logging.info(f'Created {fname_possvm}')
 
 def blastology_run(args,logging,verbose = False):

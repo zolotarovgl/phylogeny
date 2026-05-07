@@ -126,6 +126,9 @@ python main.py trim -f test.aln -o test.alt --logfile test.log
 python main.py easy-phylo --method fasttree -f data/arp23.fasta -c 16 --outdir results
 # blastology
 python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --target data/sample.fasta -c 5 --force --soi Owefus --outputfile Owenia_bcl2.tab --phymethod fasttree
+
+# blastology smoke test
+bash tests/smoke_blastology.sh
 ```
 
 
