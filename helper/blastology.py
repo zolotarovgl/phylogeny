@@ -2,6 +2,7 @@ import os
 import subprocess
 import csv
 import logging
+import sys
 from helper import functions 
 
 
@@ -56,7 +57,7 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
             clusters = clusters_filt_d
             if len(clusters_filt)==0:
                 logging.error(f'No clusters containing the species of interest (--soi) {soi}. Aborting ...')          
-                quit()
+                sys.exit(1)
 
     # rename each cluster and store the sequences 
     clusters_renamed = {}

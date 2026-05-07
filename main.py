@@ -200,7 +200,7 @@ if __name__ == "__main__":
         
         domain_expand = int(args.domain_expand) 
         hmmsearch(fasta_file = args.fasta, gene_family_info = args.gene_family_info, gene_family_name=args.gene_family_name, output_dir=args.output_dir, pfam_db=args.pfam_db,hmm_dir=hmm_dir, ncpu = int(args.ncpu),
-                   domain_expand = domain_expand, verbose = verbose,do_clean = args.keep)
+                   domain_expand = domain_expand, verbose = verbose,do_clean = not args.keep)
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")
@@ -357,59 +357,6 @@ if __name__ == "__main__":
                     # CAVE: these results should be appended!
                 else:
                     logging.error(f'Unknown clustering mode: {recluster_mode}')
-        ################################################################################
-        # Create homology group fastas: 
-        from pathlib import Path
-        from collections import defaultdict
-        from Bio import SeqIO
-
-        def split_clusters_to_fastas(cluster_tsv, input_fasta, out_prefix):
-            """
-            Create per-cluster FASTA files from cluster TSV output.
-
-            Parameters
-            ----------
-            cluster_tsv : str or Path
-                TSV file with: clusterID <tab> sequenceID
-            domains_fasta : str or Path
-                FASTA file containing all sequences
-            out_prefix : str
-                Prefix for output FASTA files
-            """
-
-            cluster_tsv = Path(cluster_tsv)
-            domains_fasta = Path(input_fasta)
-
-            # Read cluster assignments
-            clusters = defaultdict(list)
-
-            with cluster_tsv.open() as f:
-                for line in f:
-                    cluster_id, seq_id = line.strip().split("\t")
-                    clusters[cluster_id].append(seq_id)
-
-            if not clusters:
-                print("No clusters found.")
-                return
-
-            # Load all sequences into memory (fast and simple)
-            seq_dict = SeqIO.to_dict(SeqIO.parse(input_fasta, "fasta"))
-
-            # Write one FASTA per cluster
-            for cluster_id, seq_ids in clusters.items():
-                output_file = Path(f"{out_prefix}.{cluster_id}.fasta")
-
-                with output_file.open("w") as out_handle:
-                    for sid in seq_ids:
-                        if sid in seq_dict:
-                            SeqIO.write(seq_dict[sid], out_handle, "fasta")
-
-                print(f"Created {output_file}")
-        split_clusters_to_fastas(cluster_tsv = cluster_file,input_fasta = args.fasta,out_prefix = out_prefix )
-
-
-
-
         # Write per-cluster FASTA files: {out_prefix}.{cluster_id}.fasta
         final_cluster_file = out_prefix + '_cluster.tsv'
         clusters = subcl.cluster_dict(final_cluster_file)
