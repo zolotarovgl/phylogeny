@@ -4,6 +4,7 @@ import subprocess
 import csv
 import argparse
 import logging
+import shlex
 import yaml
 from Bio import SeqIO
 
@@ -34,14 +35,16 @@ def load_config():
     tool_directory = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(tool_directory, config_file)
     if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Configuration file {config_path} not found.")
+        return {}
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
-    return config
+    return config or {}
 
 # Pipelines # 
 
 if __name__ == "__main__":
+    config = load_config()
+
     parser = argparse.ArgumentParser(description="""
     Python wrapper around some useful commands
     """)
@@ -116,6 +119,7 @@ if __name__ == "__main__":
     parser_generax.add_argument('--subs_model', help='Substitution model (e.g. LG+G)')
     parser_generax.add_argument('--iqtree_file', help='Optional IQ-TREE .iqtree file to extract model')
     parser_generax.add_argument('--per-family-rates', required=False, default = True, action = 'store_true', help='Whether to use per family rates')
+    parser_generax.add_argument('--no-per-family-rates', dest='per_family_rates', action='store_false', help='Disable per family rates')
     parser_generax.add_argument('--max_spr', required=False, default = int(5), help='Maximum SPR radius')
     parser_generax.add_argument('-c','--cpus', required=False, default = int(1), help='Number of CPU cores')
     parser_generax.add_argument('-o','--outfile', required=False, default = None, help='Name of the output tree file')
@@ -148,6 +152,8 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('--method', default = "iqtree3", help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
     parser_easyphylo.add_argument('--mafft', required=False, default ="auto", help='Mafft alignment options. Default: auto - picks based on the number of sequences.\nAvailable options: auto, fast, linsi,einsi,ginsi')
+    parser_easyphylo.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
+    parser_easyphylo.add_argument('-p','--phy', default = "", help='POSSVM: OPTIONAL: String. Prefix for output files. Defaults to `basename` of input phylogeny. Default behaviour will never overwrite original files, because it adds suffixes.')
     
 
     # BLASTOLOGY - phylosearch v2
@@ -195,8 +201,8 @@ if __name__ == "__main__":
             logging.info(f'HMM directory specified: {args.hmm_dir}')
             hmm_dir = args.hmm_dir
         else:
-            logging.error(f'No HMM directory specified. Setting to hmms/')
-            hmm_dir = "hmms"
+            hmm_dir = config.get("hmm_dir", "hmms")
+            logging.info(f'No HMM directory specified. Using default: {hmm_dir}')
         
         domain_expand = int(args.domain_expand) 
         hmmsearch(fasta_file = args.fasta, gene_family_info = args.gene_family_info, gene_family_name=args.gene_family_name, output_dir=args.output_dir, pfam_db=args.pfam_db,hmm_dir=hmm_dir, ncpu = int(args.ncpu),
@@ -209,8 +215,9 @@ if __name__ == "__main__":
         
         
         infasta = args.fasta
-        temp_dir = 'tmp/'
-        cluster_log = 'tmp/cluster.log'
+        temp_dir = args.temp_dir
+        os.makedirs(temp_dir, exist_ok=True)
+        cluster_log = os.path.join(temp_dir, 'cluster.log')
         ncpu = args.ncpu 
         max_N = int(args.maxn) # maximum number of sequences in the biggest cluster
         clustering_method = args.method
@@ -414,23 +421,34 @@ if __name__ == "__main__":
         from pathlib import Path
         script = Path(__file__).resolve().parent / "helper" / "generax.py"
 
-        cmd = (
-            f"python {script} "
-            f"--name {args.name} "
-            f"--alignment {args.alignment} "
-            f"--gene_tree {args.gene_tree} "
-            f"--species_tree {args.species_tree} "
-            f"--output_dir {args.output_dir} "
-            f"--subs_model {args.subs_model} "
-            f"--max_spr {args.max_spr} "
-            f"--cpus {args.cpus} "
-            f"--logfile {args.logfile} "
-            f"--outfile {args.outfile}"
-        )
+        cmd = [
+            sys.executable,
+            str(script),
+            "--name", args.name,
+            "--alignment", args.alignment,
+            "--gene_tree", args.gene_tree,
+            "--species_tree", args.species_tree,
+            "--output_dir", args.output_dir,
+            "--max_spr", str(args.max_spr),
+            "--cpus", str(args.cpus),
+        ]
 
-        logging.info(cmd)
+        if args.subs_model:
+            cmd.extend(["--subs_model", args.subs_model])
+        if args.iqtree_file:
+            cmd.extend(["--iqtree_file", args.iqtree_file])
+        if args.per_family_rates:
+            cmd.append("--per-family-rates")
+        else:
+            cmd.append("--no-per-family-rates")
+        if args.logfile:
+            cmd.extend(["--logfile", args.logfile])
+        if args.outfile:
+            cmd.extend(["--outfile", args.outfile])
 
-        result = subprocess.run(cmd, shell=True)
+        logging.info(" ".join(shlex.quote(part) for part in cmd))
+
+        result = subprocess.run(cmd)
 
         if args.logfile:
             logging.info(f"Log: {args.logfile}")

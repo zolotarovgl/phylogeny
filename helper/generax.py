@@ -220,6 +220,7 @@ if __name__ == "__main__":
 	parser.add_argument('--subs_model', help='Substitution model (e.g. LG+G)')
 	parser.add_argument('--iqtree_file', help='Optional IQ-TREE .iqtree file to extract model')
 	parser.add_argument('--per-family-rates', required=False, default = True, action = 'store_true', help='Whether to use per family rates')
+	parser.add_argument('--no-per-family-rates', dest='per_family_rates', action='store_false', help='Disable per family rates')
 	parser.add_argument('--max_spr', required=False, default = int(5), help='Maximum SPR radius')
 	parser.add_argument('-c','--cpus', required=False, default = int(1), help='Number of CPU cores')
 	parser.add_argument('-o','--outfile', required=False, default = None, help='Name of the output tree file')
@@ -241,7 +242,7 @@ if __name__ == "__main__":
 		print(f"Error: species tree file doesn't exist! {args.species_tree}")
 		sys.exit(1)
 
-	if not args.subs_model and not args.iqtree:
+	if not args.subs_model and not args.iqtree_file:
 		print("Error: Provide either --subs_model or --iqtree_file")
 		sys.exit(1)
 
