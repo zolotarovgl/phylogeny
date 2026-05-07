@@ -93,7 +93,7 @@ def recluster_global(info_pref,fasta_file,out_prefix,temp_dir,logfile,ncpu,clust
         status = True
     return(cluster_file,status)
 
-def recluster_hg_local(args,hg_id,sequence_ids,fasta_file,temp_dir,ncpu,max_N,inflation = 1.1,inflation_step = 0.1, max_iterations = 30, verbose = False,clustering_method = 'diamond_mcl'):
+def recluster_hg_local(args,hg_id,sequence_ids,fasta_file,temp_dir,ncpu,max_N,inflation = 1.1,inflation_step = 0.1, max_iterations = 30, verbose = False,clustering_method = 'diamond_mcl', subcluster_separator = "."):
 
     temp_hg = os.path.join(temp_dir, hg_id)
     os.makedirs(temp_dir, exist_ok=True)
@@ -111,7 +111,7 @@ def recluster_hg_local(args,hg_id,sequence_ids,fasta_file,temp_dir,ncpu,max_N,in
     subcluster_file,status = recluster_global(info_pref = hg_id,fasta_file = hg_fasta,out_prefix = out_pref,
                     temp_dir = temp_hg , logfile = None,ncpu = ncpu,
                     clustering_method = clustering_method, max_N = max_N, max_iterations = max_iterations, 
-                    inflation = inflation,inflation_step = inflation_step,cluster_prefix = hg_id + ".",
+                    inflation = inflation,inflation_step = inflation_step,cluster_prefix = hg_id + subcluster_separator,
                     verbose = verbose)
     #subcluster_file = out_pref + '_cluster.tsv'
     counts = cluster_counts(subcluster_file)

@@ -83,6 +83,8 @@ if __name__ == "__main__":
     parser_cluster.add_argument('-m', '--maxn', default = int(1000), help='Maximum number of sequences in the cluster. Default: 1000')
     parser_cluster.add_argument('--method', default = "diamond_mcl", help='Clustering method. Default: diamond_mcl')
     parser_cluster.add_argument('--cluster_prefix', default = "HG", help='Cluster name prefix. Default: HG (i.e. HG1, HG2, ...)')
+    parser_cluster.add_argument('--subcluster_naming', default = "renumber", choices = ["renumber", "parent_suffix"],
+                                help='Naming for subclusters after local reclustering. Default: renumber. Use parent_suffix to keep names like HG1_1, HG1_2.')
     
 
     # Alignment
@@ -290,11 +292,12 @@ if __name__ == "__main__":
 
                     cluster_files = []
                     cluster_status = []
+                    subcluster_separator = "_" if args.subcluster_naming == "parent_suffix" else "."
                     for hg_id in too_big:
                         ids = clusters[hg_id]
                         file,status = subcl.recluster_hg_local(args = args,hg_id = hg_id,sequence_ids = ids, fasta_file = args.fasta, 
                                                                temp_dir = temp_dir,ncpu = args.ncpu,max_N = args.maxn, inflation = args.inflation, inflation_step = float(args.inflation_step),
-                                                               max_iterations = max_iterations,verbose = True)
+                                                               max_iterations = max_iterations,verbose = True, subcluster_separator = subcluster_separator)
                         cluster_files.append(file)
                         cluster_status.append(status)
                     
@@ -328,16 +331,36 @@ if __name__ == "__main__":
 
                     logging.info(f"Total clusters after merging: {len(clusters_result)}")
 
-                    sorted_clusters = sorted(
-                        clusters_result.items(),
-                        key=lambda x: len(x[1]),
-                        reverse=True
-                    )
+                    if args.subcluster_naming == "renumber":
+                        sorted_clusters = sorted(
+                            clusters_result.items(),
+                            key=lambda x: len(x[1]),
+                            reverse=True
+                        )
 
-                   
-                    sorted_renamed = {}
-                    for i, (old_id, genes) in enumerate(sorted_clusters, start=1):
-                        sorted_renamed[f"HG{i}"] = genes
+                        sorted_renamed = {}
+                        for i, (old_id, genes) in enumerate(sorted_clusters, start=1):
+                            sorted_renamed[f"{args.cluster_prefix}{i}"] = genes
+                    elif args.subcluster_naming == "parent_suffix":
+                        import re
+
+                        def cluster_sort_key(item):
+                            cluster_id = item[0]
+                            match = re.match(
+                                rf"^{re.escape(args.cluster_prefix)}(\d+)(?:_(\d+))?$",
+                                cluster_id
+                            )
+                            if match:
+                                parent_idx = int(match.group(1))
+                                child_idx = int(match.group(2)) if match.group(2) else 0
+                                is_child = 1 if match.group(2) else 0
+                                return (parent_idx, is_child, child_idx)
+                            return (float("inf"), cluster_id)
+
+                        sorted_renamed = dict(sorted(clusters_result.items(), key=cluster_sort_key))
+                    else:
+                        logging.error(f'Unknown subcluster naming mode: {args.subcluster_naming}')
+                        sys.exit(1)
 
                     # ---- Backup original file ----
                     import shutil
