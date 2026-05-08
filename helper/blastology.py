@@ -15,6 +15,19 @@ from helper.functions import cluster
 
 # cluster function is imported from helper.functions 
 
+
+def resolve_blastology_mafft(mafft):
+    # Keep existing raw MAFFT CLI option support, while accepting a few
+    # symbolic aliases for consistency with the other pipelines.
+    mafft_aliases = {
+        'auto': '--auto',
+        '--auto': '--auto',
+        'fast': '',
+        'linsi': '--maxiterate 1000 --localpair',
+    }
+    mafft_key = mafft.strip().lower()
+    return mafft_aliases.get(mafft_key, mafft)
+
 def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_file,cluster_prefix,output_directory,prefix,joint_fasta_fname,cluster_directory,verbose = False):
     logging.info('Cluster filtering')    
     query_ids_file = os.path.join(temp_dir,f'{prefix}_query.ids') 
@@ -113,7 +126,7 @@ def parse_args(args):
     refnames_file = args.refnames
 
     ncpu = args.ncpu
-    mafft = args.mafft
+    mafft = resolve_blastology_mafft(args.mafft)
     phy_method = args.phymethod
     mcl_inflation = args.mcl_inflation
     #globals().update(locals())
