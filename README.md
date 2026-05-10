@@ -68,10 +68,15 @@ python main.py pfamscan \
   -c 8
 ```
 
+Use `--outprefix` if you want to override the default output filename prefix derived from the input FASTA basename.
+Use `--arch_sep` if you want a different separator in `*.pfamscan_archs.csv`; the default is a comma.
+
 Main outputs:
 - `query.pfamscan.domtblout` - raw `hmmscan --domtblout` result
 - `query.pfamscan.out` - full `hmmscan` stdout/stderr capture
 - `query.pfamscan.tsv` - parsed tab-separated hit table
+- `query.pfamscan.domains.csv` - bed-like per-domain hit table: `sequence_id  start  end  pfam_name`
+- `query.pfamscan_archs.csv` - one merged record per protein with comma-separated domains ordered left-to-right
 
 For non-Pfam HMM databases that do not define gathering thresholds, disable `--cut_ga` and set a domain E-value explicitly:
 

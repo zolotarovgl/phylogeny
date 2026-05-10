@@ -22,7 +22,7 @@ ACDEFGHIK
 MMMMMMMMM
 EOF
 
-hmmbuild --amino "$TMP_DIR/toy.hmm" "$TMP_DIR/toy_alignment.fasta" > "$TMP_DIR/hmmbuild.log"
+hmmbuild --amino -n ToyDomain "$TMP_DIR/toy.hmm" "$TMP_DIR/toy_alignment.fasta" > "$TMP_DIR/hmmbuild.log"
 hmmpress -f "$TMP_DIR/toy.hmm" > "$TMP_DIR/hmmpress.log"
 
 python main.py pfamscan \
@@ -35,8 +35,13 @@ python main.py pfamscan \
 
 test -s "$TMP_DIR/results/toy.pfamscan.domtblout"
 test -s "$TMP_DIR/results/toy.pfamscan.tsv"
+test -s "$TMP_DIR/results/toy.pfamscan.domains.csv"
+test -s "$TMP_DIR/results/toy.pfamscan_archs.csv"
 
 grep -q '^sequence_id' "$TMP_DIR/results/toy.pfamscan.tsv"
 grep -q '^toy_query_match[[:space:]]' "$TMP_DIR/results/toy.pfamscan.tsv"
+grep -q $'^toy_query_match\t[0-9][0-9]*\t[0-9][0-9]*\tToyDomain$' "$TMP_DIR/results/toy.pfamscan.domains.csv"
+grep -q $'^toy_query_match\t[0-9][0-9]*\t[0-9][0-9]*\tToyDomain$' "$TMP_DIR/results/toy.pfamscan_archs.csv"
+! grep -q '/' "$TMP_DIR/results/toy.pfamscan_archs.csv"
 
 echo "pfamscan smoke test passed"

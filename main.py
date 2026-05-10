@@ -74,11 +74,12 @@ if __name__ == "__main__":
     parser_pfamscan.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
     parser_pfamscan.add_argument('--pfam_db', required=True, help='Path to a pressed HMM database file, e.g. Pfam-A.hmm')
     parser_pfamscan.add_argument('-o', '--output_dir', required=True, help='Output directory')
-    parser_pfamscan.add_argument('-p', '--prefix', required=False, default=None, help='Output prefix. Default: basename of the input fasta file')
+    parser_pfamscan.add_argument('-p', '--prefix', '--outprefix', dest='prefix', required=False, default=None, help='Output prefix. Default: basename of the input fasta file')
     parser_pfamscan.add_argument('-c', '--ncpu', required=False, default=int(1), help='Number of CPU cores to use')
     parser_pfamscan.add_argument('--cut_ga', dest='cut_ga', action='store_true', default=True, help='Use gathering cutoffs from the HMM database. Default: enabled')
     parser_pfamscan.add_argument('--no-cut_ga', dest='cut_ga', action='store_false', help='Disable gathering cutoffs')
     parser_pfamscan.add_argument('--domE', required=False, default=None, help='Domain E-value cutoff for hmmscan. Use with --no-cut_ga')
+    parser_pfamscan.add_argument('--arch_sep', required=False, default=",", help='Separator for domain architectures in *.pfamscan_archs.csv. Default: ","')
     parser_pfamscan.add_argument('--force', required=False, default=False, action='store_true', help='Rerun hmmscan even if the domtblout file already exists')
     
     # Cluster
@@ -233,6 +234,7 @@ if __name__ == "__main__":
             ncpu=int(args.ncpu),
             cut_ga=args.cut_ga,
             dom_evalue=args.domE,
+            arch_sep=args.arch_sep,
             force=args.force,
             verbose=verbose,
         )
