@@ -163,6 +163,9 @@ INFASTA=data/arp23.fasta
 python main.py align -f $INFASTA -o test.aln --notrim
 python main.py trim -f test.aln -o test.alt --logfile test.log
 
+# keep the pre-ClipKIT alignment as test.alt.untrimmed
+python main.py align -f $INFASTA -o test.alt --keep
+
 # easy-phylo
 python main.py easy-phylo --method fasttree -f data/arp23.fasta -c 16 --outdir results
 # blastology

@@ -29,7 +29,7 @@ def align_and_trim(input_file,output_file,ncpu = 1,clipkit_mode = "kpic-gappy",c
     if not os.path.exists(input_file):
         logging.error(f"{input_file} doesn't exist")
         sys.exit(1)
-    tmpfile = input_file + '.tmp'
+    tmpfile = output_file + '.untrimmed'
     
     align(input_file,tmpfile,ncpu = ncpu)
     trim(tmpfile,output_file,mode = clipkit_mode,g = clipkit_g)

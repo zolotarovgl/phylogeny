@@ -108,6 +108,7 @@ if __name__ == "__main__":
     parser_align.add_argument('-c', '--ncpu', required=False, default = int(1), help='Number of CPU cores to use')
     parser_align.add_argument('-m', '--mafft', required=False, default ="", help='Mafft alignment options. Default  "", you can set it to --maxiterate 1000 --genafpair')
     parser_align.add_argument('--notrim', required=False, default = False, action = 'store_true', help='Use this to skip the alignment trimming step')
+    parser_align.add_argument('--keep', required=False, default = False, action = 'store_true', help='Keep the untrimmed alignment as OUTFILE.untrimmed')
 
     # Trimming
     parser_trim = subparsers.add_parser('trim', help='Trim alignment')
@@ -431,7 +432,7 @@ if __name__ == "__main__":
     elif args.command == 'align':
         logging.info("Command: Align")
         # --notrim - triggers skipping alignment trimming 
-        functions.align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft, notrim = args.notrim)
+        functions.align_and_trim(input_file = args.fasta, output_file = args.outfile, ncpu = args.ncpu, mafft_opt = args.mafft, notrim = args.notrim, clean = not args.keep)
 
     elif args.command == 'trim':
         logging.info("Command: trim")
