@@ -9,6 +9,7 @@ import yaml
 from Bio import SeqIO
 
 from helper.hmmsearch import hmmsearch
+from helper.pfamscan import pfamscan
 #from helper.s02_cluster import cluster 
 from helper.functions import align_and_trim
 from helper.functions import phylogeny
@@ -67,6 +68,18 @@ if __name__ == "__main__":
     parser_search.add_argument('--domain_expand',required=False, default = "50", help='Expand domain ranges to X aminoacids in both directions. Default: 50')
     parser_search.add_argument('-c', '--ncpu', required=False, default = int(1),  help='Number of CPU cores to use')
     parser_search.add_argument('--keep', required=False, default = False, action = 'store_true', help='Use this to keep temporary files')
+
+    # Pfam Scan
+    parser_pfamscan = subparsers.add_parser('pfamscan', help='Scan sequences against a pressed HMM database using hmmscan')
+    parser_pfamscan.add_argument('-f', '--fasta', required=True, help='Path to the input fasta file')
+    parser_pfamscan.add_argument('--pfam_db', required=True, help='Path to a pressed HMM database file, e.g. Pfam-A.hmm')
+    parser_pfamscan.add_argument('-o', '--output_dir', required=True, help='Output directory')
+    parser_pfamscan.add_argument('-p', '--prefix', required=False, default=None, help='Output prefix. Default: basename of the input fasta file')
+    parser_pfamscan.add_argument('-c', '--ncpu', required=False, default=int(1), help='Number of CPU cores to use')
+    parser_pfamscan.add_argument('--cut_ga', dest='cut_ga', action='store_true', default=True, help='Use gathering cutoffs from the HMM database. Default: enabled')
+    parser_pfamscan.add_argument('--no-cut_ga', dest='cut_ga', action='store_false', help='Disable gathering cutoffs')
+    parser_pfamscan.add_argument('--domE', required=False, default=None, help='Domain E-value cutoff for hmmscan. Use with --no-cut_ga')
+    parser_pfamscan.add_argument('--force', required=False, default=False, action='store_true', help='Rerun hmmscan even if the domtblout file already exists')
     
     # Cluster
     parser_cluster = subparsers.add_parser('cluster', 
@@ -209,6 +222,20 @@ if __name__ == "__main__":
         domain_expand = int(args.domain_expand) 
         hmmsearch(fasta_file = args.fasta, gene_family_info = args.gene_family_info, gene_family_name=args.gene_family_name, output_dir=args.output_dir, pfam_db=args.pfam_db,hmm_dir=hmm_dir, ncpu = int(args.ncpu),
                    domain_expand = domain_expand, verbose = verbose,do_clean = not args.keep)
+
+    elif args.command == 'pfamscan':
+        logging.info("Command: PfamScan")
+        pfamscan(
+            fasta_file=args.fasta,
+            pfam_db=args.pfam_db,
+            output_dir=args.output_dir,
+            prefix=args.prefix,
+            ncpu=int(args.ncpu),
+            cut_ga=args.cut_ga,
+            dom_evalue=args.domE,
+            force=args.force,
+            verbose=verbose,
+        )
 
     elif args.command == 'cluster':
         logging.info("Command: Cluster")

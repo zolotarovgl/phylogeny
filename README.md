@@ -10,14 +10,15 @@ To use GeneRax, install it from source (`https://github.com/BenoitMorel/GeneRax`
 
 
 ```bash
-usage: main.py [-h] {hmmsearch,cluster,align,phylogeny,generax,possvm,easy-phylo,blastology} ...
+usage: main.py [-h] {hmmsearch,pfamscan,cluster,align,phylogeny,generax,possvm,easy-phylo,blastology} ...
 
 Python wrapper around some useful commands
 
 positional arguments:
-  {hmmsearch,cluster,align,phylogeny,generax,possvm,easy-phylo,blastology}
+  {hmmsearch,pfamscan,cluster,align,phylogeny,generax,possvm,easy-phylo,blastology}
                         Sub-command help
     hmmsearch           Search for a family using HMMER
+    pfamscan            Scan sequences against a pressed HMM database using hmmscan
     cluster             Run clustering
     align               Run alignment
     phylogeny           Run phylogeny 
@@ -47,6 +48,41 @@ Main outputs:
 - `bet.Insulin.domains.fasta` - domain ranges sequences  
 - `bet.Insulin.domains.csv` - domain ranges .bed file   
 - `bet.Insulin.seqs.fasta` - full protein sequences  
+
+### PFAMSCAN
+Use `hmmscan` against a pressed HMM database such as `Pfam-A.hmm` without going through the family-specific `hmmsearch` workflow.
+
+First, press the database once:
+
+```bash
+hmmpress ~/Documents/db/Pfam/Pfam-A.hmm
+```
+
+Then run the scan:
+
+```bash
+python main.py pfamscan \
+  -f tmp/query.fasta \
+  --pfam_db ~/Documents/db/Pfam/Pfam-A.hmm \
+  -o results/pfamscan \
+  -c 8
+```
+
+Main outputs:
+- `query.pfamscan.domtblout` - raw `hmmscan --domtblout` result
+- `query.pfamscan.out` - full `hmmscan` stdout/stderr capture
+- `query.pfamscan.tsv` - parsed tab-separated hit table
+
+For non-Pfam HMM databases that do not define gathering thresholds, disable `--cut_ga` and set a domain E-value explicitly:
+
+```bash
+python main.py pfamscan \
+  -f tmp/query.fasta \
+  --pfam_db tmp/toy.hmm \
+  -o results/pfamscan \
+  --no-cut_ga \
+  --domE 1e-3
+```
 
 ### Clustering   
 
@@ -129,6 +165,9 @@ python main.py blastology --query data/BCL2.fasta --refnames data/BCL2.names --t
 
 # blastology smoke test
 bash tests/smoke_blastology.sh
+
+# pfamscan smoke test
+bash tests/smoke_pfamscan.sh
 ```
 
 
