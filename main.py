@@ -148,7 +148,8 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('--method', default = "iqtree3", help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
     parser_easyphylo.add_argument('--mafft', required=False, default ="auto", help='Mafft alignment options. Default: auto - picks based on the number of sequences.\nAvailable options: auto, fast, linsi,einsi,ginsi')
-    
+    parser_easyphylo.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
+
 
     # BLASTOLOGY - phylosearch v2
     parser_blastology = subparsers.add_parser('blastology',
