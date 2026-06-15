@@ -149,6 +149,7 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
     parser_easyphylo.add_argument('--mafft', required=False, default ="auto", help='Mafft alignment options. Default: auto - picks based on the number of sequences.\nAvailable options: auto, fast, linsi,einsi,ginsi')
     parser_easyphylo.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
+    parser_easyphylo.add_argument('--phy', default = "", help='POSSVM: output prefix (passed through to possvm).')
 
 
     # BLASTOLOGY - phylosearch v2
