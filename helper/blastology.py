@@ -13,6 +13,34 @@ from helper.functions import cluster
 
 # cluster function is imported from helper.functions 
 
+def parse_args(args):
+    
+    print(args)
+    
+    min_n = 3 # minimal number of sequences in the cluster
+    cluster_prefix = args.prefix + '.' + args.cluster_prefix # a prefix to add to the cluster 
+    output_directory = args.output_dir
+    cluster_directory = os.path.join(output_directory,'clusters')
+    
+    query = args.query
+    target = args.target
+    temp_dir = args.temp_dir
+    prefix = args.prefix
+    soi = args.soi
+    require_soi = bool(soi)
+    
+    force = args.force
+    refnames_file = args.refnames
+
+    ncpu = args.ncpu
+    mafft = args.mafft
+    phy_method = args.phymethod
+    mcl_inflation = args.mcl_inflation
+    #globals().update(locals())
+    #print(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi)
+    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method,mcl_inflation)
+
+
 def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_file,cluster_prefix,output_directory,prefix,joint_fasta_fname,cluster_directory,verbose = False):
     logging.info('Cluster filtering')    
     query_ids_file = os.path.join(temp_dir,f'{prefix}_query.ids') 
@@ -94,34 +122,8 @@ def filter_clusters(query,temp_dir,cluster_file,soi,require_soi,min_n,refnames_f
         functions.retrive_sequences(joint_fasta_fname, cluster_fasta, ids_to_keep)
     return(cluster_fastas)
 
-def parse_args(args):
-    
-    print(args)
-    
-    min_n = 3 # minimal number of sequences in the cluster
-    cluster_prefix = args.prefix + '.' + args.cluster_prefix # a prefix to add to the cluster 
-    output_directory = args.output_dir
-    cluster_directory = os.path.join(output_directory,'clusters')
-    
-    query = args.query
-    target = args.target
-    temp_dir = args.temp_dir
-    prefix = args.prefix
-    soi = args.soi
-    require_soi = bool(soi)
-    
-    force = args.force
-    refnames_file = args.refnames
-
-    ncpu = args.ncpu
-    mafft = args.mafft
-    phy_method = args.phymethod
-    mcl_inflation = args.mcl_inflation
-    #globals().update(locals())
-    #print(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi)
-    return(query,target,temp_dir,prefix,soi,force,refnames_file,ncpu,min_n,cluster_prefix,output_directory,cluster_directory,require_soi,mafft,phy_method,mcl_inflation)
-
 def join_seqs(query,target,joint_fasta_fname,joint_ids_fname,blastp_outfile,verbose):
+    # A silly function to join 2 fasta files - for instance query and target for joint clustering   
     cmd = f'cat {query} {target} > {joint_fasta_fname}_tmp; samtools faidx {joint_fasta_fname}_tmp'
     if verbose:
         logging.info(cmd)
@@ -137,12 +139,21 @@ def join_seqs(query,target,joint_fasta_fname,joint_ids_fname,blastp_outfile,verb
     logging.info('Done collecting BLASTP results')
 
 def get_results(cluster_directory,prefix,query_ids,soi = None,output_file = None,verbose = True):
+    # silly function to collect search results   
     if not output_file:
         logging.error('Specify output file!!!')
         quit()
     cmd = f'cat  {cluster_directory}/{prefix}*groups.csv | grep -f <(cat {cluster_directory}/{prefix}*groups.csv | grep -f {query_ids} | cut -f 2 | sort | uniq)'
     if soi:
-        cmd = cmd + f' | grep {soi} > {output_file}'
+        # `|| true`: grep exits 1 when it matches NOTHING, and subprocess.run(check=True)
+        # below turns that into a crash. But "the species of interest has no gene in the
+        # anchor orthogroup" is a RESULT, not an error -- it happens whenever soi genes
+        # cluster apart from the reference anchors. Observed in gastrula_signalling on
+        # notch_receptor (Mlei MlNotch lands in OG17/OG18 'like:' groups while the
+        # Mmus/Dmel anchors sit in OG33) and on tgfb_antagonists, where it killed the
+        # whole Snakemake DAG and blocked the downstream merge. Write an empty file
+        # instead; an empty result is the honest representation.
+        cmd = cmd + f' | {{ grep {soi} || true; }} > {output_file}'
     else:
         cmd = cmd + f' > {output_file}'
     if verbose > 1:

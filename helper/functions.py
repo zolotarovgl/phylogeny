@@ -9,6 +9,10 @@ import ete3
 
 
 #### Tool functions #####
+def count_lines(file):
+    return(sum(1 for _ in open(file)))
+
+
 def align(fasta_file, output_file, ncpu, mafft_opt,verbose):
     if verbose:
         n  = count_seqs(fasta_file,verbose)
@@ -140,11 +144,20 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt
     logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True)
     if min_perc:
-        logging.info(f'Minimum BLASTP hit percetage is set to {min_perc}. Filtering')
-        cmd = f"cat {outfile} | awk '$3>={min_perc}' > {outfile}.filtered; mv {outfile}.filtered {outfile}"
+        if float(min_perc) < 1:
+            min_perc = float(min_perc)*100
+        logging.info(f'Minimum BLASTP hit percentage is set to {min_perc}. Filtering')
+        n_before = int(subprocess.check_output(f"cut -f 2 {outfile} | sort | uniq | wc -l", shell=True, text=True))
+        cmd = f"cp {outfile} {outfile}.tmp; cat {outfile} | awk '$3>={min_perc}' > {outfile}.filtered; mv {outfile}.filtered {outfile}"
         if verbose:
             logging.info(cmd)
         subprocess.run(cmd, shell=True, check=True)
+        n_after = int(subprocess.check_output(f"cut -f 2 {outfile} | sort | uniq | wc -l", shell=True, text=True))
+        if n_after == 0:
+            logging.error(f"No BLASTP hits above sequence identity threshold ({min_perc})! Exiting ...")
+            sys.exit(1)
+        logging.info(f'{str(n_after)} / {str(n_before)} hits pass min sequence identity threshold ({min_perc} %). Non-filtered results: {outfile}.tmp')
+
 
 
 def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = False):

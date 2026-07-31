@@ -1,6 +1,7 @@
-- simplify gene family file
+- simplify gene family file - Family_name, HMM, inflation?  
+- make gene family dependency optional  
 - add more possvm options
-- cluster stats output
+- cluster stats output  
 - separate log files
 - move cluster filtering from the main
 - make nicer temporary and output directories
@@ -13,5 +14,8 @@
 BLASTOLOGY  
 - check for species prefixes in the provided queries! If these species aren't found in the fasta file, abort!  
 - slurm scripts to run blastology 
-- add a possibility to extract PFAM domain from blastp hits. Basically, run hmmsearch on the hits   
+- add a possibility to extract PFAM domain from blastp hits. Basically, run hmmsearch on the hits - this will limit the aligments to the HMM domains   
+- domain architecture report    
+- remove dependency on clustering function? It's defined in the helper functions, makes it harder to follow the overall logic  
+
 
