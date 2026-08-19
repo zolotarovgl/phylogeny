@@ -218,7 +218,7 @@ def blastology_run(args,logging,verbose = False):
     else:
         clustering_method = 'diamond_mcl'
         logging.info(f'Running MCL clustering of {joint_fasta_fname} with inflation {mcl_inflation} ...')
-        cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method,mcl_inflation = mcl_inflation,verbose = verbose, logging = logging)
+        cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method,mcl_inflation = mcl_inflation,verbose = verbose, logging = logging,per_species_n = getattr(args, 'per_species_n', 6))
     # Cluster filtering 
     cluster_fastas = filter_clusters(query = query, temp_dir = temp_dir, cluster_file = cluster_file, soi = soi, require_soi = require_soi,min_n = min_n, refnames_file = refnames_file, cluster_prefix = cluster_prefix, cluster_directory = cluster_directory,output_directory = output_directory, prefix = prefix, joint_fasta_fname = joint_fasta_fname, verbose = True)
     cluster_fastas = [os.path.basename(x) for x in cluster_fastas]

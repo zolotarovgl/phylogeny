@@ -276,7 +276,7 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt
 		subprocess.run(cmd, shell=True, check=True)
 
 
-def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = True, logging = None):
+def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = True, logging = None,per_species_n = 6,graph_max_target_seqs = None):
 	if method == 'mmseqs2':
 		cmd = f"mmseqs easy-cluster -s 7.5 --cov-mode 0 --cluster-mode 2 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
 		if verbose:
@@ -288,7 +288,43 @@ def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseq
 		   logging.info(cmd)
 		subprocess.run(cmd, shell=True, check=True)
 
-		diamond_max_target_seqs = 30
+		# ------------------------------------------------------------------------------
+		# All-vs-all graph for MCL.
+		#
+		# The cap here used to be a hard-coded GLOBAL 30 neighbours per sequence, which
+		# fragments families along lineage lines: a sequence whose 30 best hits are all its
+		# own lineage's paralogs gets NO edge to the rest of the family, MCL separates it,
+		# and (in blastology) the query-free component is discarded before alignment.
+		# Measured 2026-08-19 on Tropomyosin: the 30 neighbours of Mlei_v05_G010695 were all
+		# ctenophore, and Mlei+Nvec+Aaur+Spis (148 seqs) were dropped.
+		#
+		# Fix, after Broccoli (Derelle et al. 2020, MBE 37:3389, "the N best hits per species
+		# are reported, N=6 by default"): keep the N best hits PER SPECIES instead. One
+		# lineage's paralogs then cannot monopolise the budget. Measured on the same family,
+		# per-species N=3 succeeds with 4,817 edges where global top-30 FAILS with 4,170 --
+		# i.e. it is not about graph size but about which edges are kept.
+		#
+		# The global diamond cap is derived, not guessed: to guarantee N per species you need
+		# at least N * n_species slots.
+		# Set per_species_n = None (or 0) to restore the old global-cap behaviour.
+		# ------------------------------------------------------------------------------
+		species = set()
+		with open(fasta_file) as _fh:
+			for _line in _fh:
+				if _line.startswith('>'):
+					species.add(_line[1:].split()[0].split('_')[0])
+		n_species = len(species)
+		if per_species_n and n_species > 1:
+			diamond_max_target_seqs = int(graph_max_target_seqs or max(int(per_species_n) * n_species, 30))
+		else:
+			diamond_max_target_seqs = int(graph_max_target_seqs or 30)
+			if per_species_n and n_species <= 1:
+				logging.warning(
+					f'CLUSTER: only {n_species} species prefix parsed from {fasta_file}; '
+					f'per-species capping DISABLED (ids must look like <Species>_<rest>).')
+				per_species_n = None
+		logging.info(f'CLUSTER: {n_species} species, per_species_n={per_species_n}, '
+					 f'diamond --max-target-seqs {diamond_max_target_seqs}')
 		cmd = f"diamond blastp --more-sensitive --max-target-seqs {diamond_max_target_seqs} -d {fasta_file} -q  {fasta_file} -o {out_prefix}_diamond.csv --quiet --threads {ncpu}"
 		if verbose:
 			logging.info(cmd)
@@ -297,6 +333,29 @@ def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseq
 		if verbose:
 			 logging.info(cmd)
 		subprocess.run(cmd, shell=True, check=True) 
+		# Broccoli-style per-species filter: keep the N best hits per (query, subject species).
+		if per_species_n:
+			import collections as _c
+			_best = _c.defaultdict(list)
+			_n_in = 0
+			with open(f'{out_prefix}_diamond.abc') as _fh:
+				for _line in _fh:
+					_f = _line.split()
+					if len(_f) < 3:
+						continue
+					_n_in += 1
+					_best[(_f[0], _f[1].split('_')[0])].append((float(_f[2]), _line))
+			_n_out = 0
+			with open(f'{out_prefix}_diamond.abc', 'w') as _fh:
+				for _k, _v in _best.items():
+					_v.sort(key=lambda x: -x[0])
+					for _sc, _line in _v[:int(per_species_n)]:
+						_fh.write(_line); _n_out += 1
+			logging.info(f'CLUSTER: per-species filter (N={per_species_n}): '
+						 f'{_n_in} -> {_n_out} edges')
+			if _n_out == 0:
+				logging.error('CLUSTER: per-species filter produced an EMPTY graph -- aborting')
+				sys.exit(1)
 		cmd = f"mcl {out_prefix}_diamond.abc --abc -I {mcl_inflation} -o {out_prefix}_mcl.tsv 2> /dev/null"
 		
 		if verbose:
