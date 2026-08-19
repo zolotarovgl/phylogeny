@@ -181,6 +181,8 @@ if __name__ == "__main__":
     parser_blastology.add_argument('--min_perc', required=False, default = 30, help='Minimum sequence percentage identity for BLASTP hit filtering. Default [30]')
     parser_blastology.add_argument('--evalue', required=False, default = "1e-5", help='BLAST E-value threshold. Default "1e-5"')
     parser_blastology.add_argument('--mcl_inflation', required=False, default = "1.1", help='MCL inflation parameter. Default "1.1"')
+    parser_blastology.add_argument('--cluster_method', required=False, default = 'diamond_mcl', help='Clustering of the joint hit set: diamond_mcl (all-vs-all graph + MCL) or mmseqs2 (connected-component clustering, --cluster-mode 1; needs no neighbour cap and no inflation). Default [diamond_mcl]')
+    parser_blastology.add_argument('--mmseqs_cov', required=False, default = 0.3, help='Coverage threshold for --cluster_method mmseqs2. Default [0.3]')
     parser_blastology.add_argument('--per_species_n', required=False, default = 6, help='All-vs-all graph: keep the N best hits PER SPECIES (Broccoli-style, Derelle 2020). 0/None restores the old global cap, which fragments families along lineage lines. Default [6]')
     parser_blastology.add_argument('--max_target_seqs', required=False, default = 5000, help='BLASTP -max_target_seqs, i.e. subjects reported PER QUERY. BLAST\'s own default is 500, which silently truncates recruitment on large targets and drops divergent homologs (see Issues.md I36). Default [5000]')
 

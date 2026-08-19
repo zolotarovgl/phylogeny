@@ -276,12 +276,51 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt
 		subprocess.run(cmd, shell=True, check=True)
 
 
-def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = True, logging = None,per_species_n = 6,graph_max_target_seqs = None):
+def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'diamond_mcl',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = True, logging = None,per_species_n = 6,graph_max_target_seqs = None,mmseqs_cov = 0.3):
 	if method == 'mmseqs2':
-		cmd = f"mmseqs easy-cluster -s 7.5 --cov-mode 0 --cluster-mode 2 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
+		# ------------------------------------------------------------------------------
+		# Connected-component clustering. --cluster-mode 1 (connected component) is the ONLY
+		# mode that recovers divergent lineages, because it propagates TRANSITIVE homology:
+		# A-B and B-C edges pull A and C together even when A-C similarity is below any
+		# threshold. Modes 0 (set cover) and 2 (greedy incremental) ask instead "is this
+		# similar enough to a representative?", which is a fundamentally weaker criterion.
+		#
+		# Measured 2026-08-19 on Tropomyosin (204 seqs, 13 queries), "does the Mnemiopsis
+		# tropomyosin share a cluster with a query?":
+		#     --cluster-mode 1  ->  13/13   <- this
+		#     --cluster-mode 0  ->   4/13
+		#     --cluster-mode 2  ->   0/13   <- what this branch used to run
+		# Mode 2 fails at EVERY coverage setting tested (-c 0.8 / 0.5 / 0.3 / 0.2 / 0.0).
+		#
+		# Advantage over the diamond_mcl route: needs neither a neighbour cap nor an MCL
+		# inflation value, so there is no threshold to justify per family.
+		# ------------------------------------------------------------------------------
+		cmd = f"mmseqs easy-cluster -s 7.5 -c {mmseqs_cov} --cov-mode 0 --cluster-mode 1 --min-seq-id 0.0 {fasta_file} {out_prefix} {temp_dir} --cluster-reassign >> {logfile} 2>&1"
 		if verbose:
 			 logging.info(cmd)
 		subprocess.run(cmd, shell=True, check=True)
+		# ADAPTER: mmseqs writes "<representative_seqid>\t<member_seqid>", but the rest of the
+		# pipeline (blastology.filter_clusters) expects "<cluster_prefix><n>\t<seqid>" exactly
+		# as the diamond_mcl branch emits. Without this the run still completes, but every
+		# cluster is named after a representative SEQUENCE -- which then propagates into the
+		# per-cluster fastas, tree prefixes and orthogroup names. Renumber by size, descending,
+		# to match MCL's convention.
+		import collections as _c
+		_cl = _c.OrderedDict()
+		with open(f'{out_prefix}_cluster.tsv') as _fh:
+			for _line in _fh:
+				_f = _line.rstrip('\n').split('\t')
+				if len(_f) < 2:
+					continue
+				_cl.setdefault(_f[0], []).append(_f[1])
+		_order = sorted(_cl.items(), key=lambda kv: -len(kv[1]))
+		with open(f'{out_prefix}_cluster.tsv', 'w') as _fh:
+			for _i, (_rep, _members) in enumerate(_order, start=1):
+				for _m in _members:
+					_fh.write(f'{cluster_prefix}{_i}\t{_m}\n')
+		logging.info(f'CLUSTER (mmseqs cluster-mode 1): {len(_order)} clusters, '
+					 f'largest {len(_order[0][1]) if _order else 0}; '
+					 f'ids renumbered to {cluster_prefix}<n>')
 	elif method == 'diamond_mcl':
 		cmd = f"diamond makedb --in {fasta_file} -d {fasta_file} --quiet"
 		if verbose: 
