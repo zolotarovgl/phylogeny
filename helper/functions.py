@@ -230,7 +230,7 @@ def possvm(treefile,
 
 # Phylo-search functions 
 
-def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null',verbose = False):
+def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",logfile = '/dev/null',verbose = False,max_target_seqs = 5000):
 	if not os.path.isfile(f'{db}.pdb'):
 		cmd = f"makeblastdb -in {target} -dbtype prot -out {db} > {logfile}"
 		if verbose:
@@ -238,9 +238,36 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt
 		subprocess.run(cmd, shell=True, check=True)
 	else:
 		logging.info(f'Found db files {db}. Skipping db building')
-	cmd = f'blastp -query {query} -out {outfile} -db {db} -evalue {evalue} -num_threads {ncpu} -outfmt "{outfmt}" >> {logfile} 2>&1'
+	# -max_target_seqs: BLAST's default is 500 subjects PER QUERY. Against a large target
+	# (e.g. ~1e6 proteins) that cap binds by similarity rank, so the slots are consumed by
+	# whichever lineage has the most near-identical paralogs and divergent homologs are
+	# silently dropped. Measured 2026-08-19 on a 1,032,337-protein target, 9 myosin queries:
+	# every query saturated at exactly 500, and only 3 of the 26 Aurelia myosins were
+	# recruited; at 5000 the same search recovers 22 of 26. See
+	# 2022_Mlei/muscle/docs/blastology_recruitment_bias.md and Issues.md I36.
+	# NB the parameter is not a simple top-N filter -- it interacts with BLAST's heuristics.
+	cmd = f'blastp -query {query} -out {outfile} -db {db} -evalue {evalue} -num_threads {ncpu} -max_target_seqs {max_target_seqs} -outfmt "{outfmt}" >> {logfile} 2>&1'
 	logging.info(cmd)
 	subprocess.run(cmd, shell=True, check=True)
+	# Saturation warning: if any query returns exactly max_target_seqs distinct subjects the
+	# cap is binding and the recruitment is truncated -- do NOT read absences from such a run.
+	try:
+		import collections
+		per_q = collections.defaultdict(set)
+		with open(outfile) as fh:
+			for line in fh:
+				f = line.split('\t')
+				if len(f) > 1:
+					per_q[f[0]].add(f[1])
+		sat = [q for q, subs in per_q.items() if len(subs) >= int(max_target_seqs)]
+		if sat:
+			logging.warning(
+				f'BLASTP: {len(sat)}/{len(per_q)} queries SATURATED -max_target_seqs '
+				f'({max_target_seqs}); recruitment is truncated and absences are unreliable. '
+				f'Raise it. Queries: {",".join(sorted(sat)[:5])}'
+				+ (' ...' if len(sat) > 5 else ''))
+	except Exception as e:
+		logging.warning(f'BLASTP: could not check max_target_seqs saturation: {e}')
 	if min_perc:
 		logging.info(f'Minimum BLASTP hit percetage is set to {min_perc}. Filtering')
 		cmd = f"cat {outfile} | awk '$3>={min_perc}' > {outfile}.filtered; mv {outfile}.filtered {outfile}"
