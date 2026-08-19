@@ -222,7 +222,9 @@ def possvm(treefile,
 	
 	if phy != '':
 		phy =  f'--phy {phy}'
-	cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup}  {phy} >> {logfile} 2>&1"
+	# NOTE: -skipprint is intentionally NOT passed here -- POSSVM prints the annotated
+	# phylogeny as a PDF by default, and the pipeline should always produce that visualization.
+	cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup}  {phy} >> {logfile} 2>&1"
 	#print(cmd)
 	logging.info(cmd)
 	os.system(f'echo "{cmd}" > {logfile}')    
