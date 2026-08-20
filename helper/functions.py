@@ -39,12 +39,58 @@ def align_and_trim(input_file,output_file,ncpu = 1,mafft_opt = "",clipkit_mode =
 	if do_trim:
 		align(input_file,tmpfile,ncpu = ncpu,mafft_opt = mafft_opt,verbose = verbose)
 		clipkit_trim(tmpfile,output_file,mode = clipkit_mode,g = clipkit_g,logfile = logfile,verbose = verbose)
+		drop_gaponly(output_file, logging = logging)
 		if clean:
 			cmd = f"rm {tmpfile}"
 			#logging.info(cmd)
 			subprocess.run(cmd, shell=True, check=True)
 	else:
 		align(input_file,output_file,ncpu = ncpu,mafft_opt = mafft_opt,verbose = verbose)
+	drop_gaponly(output_file, logging = logging)
+
+
+def drop_gaponly(aln_file, logging = None):
+	"""Remove sequences that are ALL gaps after alignment/trimming.
+
+	IQ-TREE aborts outright on them -- "Sequence X contains only gaps or missing data /
+	ERROR: Some sequences (see above) are problematic" -- which kills the whole family.
+	Measured 2026-08-19 on Calponin: one Capitella fragment
+	(Ctel_gnl_WGS_AMQN_CAPTEDRAFT_mRNA92005) survived MAFFT, was trimmed to nothing by
+	clipkit -m kpic-gappy, and took the run down with it. Short fragments reach the
+	alignment more often now that recruitment is no longer truncated by -max_target_seqs.
+
+	phylohpc already does exactly this between its align and phylogeny rules
+	(workflow/remove_gaponly.py, called from step2.smk); blastology had no equivalent.
+	"""
+	if not os.path.exists(aln_file):
+		return
+	kept, dropped = [], []
+	name, seq = None, []
+	def _flush():
+		if name is None:
+			return
+		s = "".join(seq)
+		(kept if s.replace("-", "").replace(".", "") != "" else dropped).append((name, s))
+	with open(aln_file) as fh:
+		for line in fh:
+			line = line.rstrip("\n")
+			if line.startswith(">"):
+				_flush(); name, seq = line, []
+			else:
+				seq.append(line)
+	_flush()
+	if not dropped:
+		return
+	with open(aln_file, "w") as fh:
+		for n, s in kept:
+			fh.write(f"{n}\n{s}\n")
+	msg = (f'ALIGNMENT: dropped {len(dropped)} gap-only sequence(s) after trimming '
+		   f'({len(kept)} kept): {",".join(n[1:] for n, _ in dropped[:5])}'
+		   + (" ..." if len(dropped) > 5 else ""))
+	if logging is not None:
+		logging.warning(msg)
+	else:
+		print(msg)
 
 
 # Phylogeny wrappers
