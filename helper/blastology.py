@@ -216,7 +216,7 @@ def blastology_run(args,logging,verbose = False):
     if os.path.isfile(cluster_file) and not force:
         logging.info(f'Found clustering file {cluster_file}. Skipping')
     else:
-        clustering_method = getattr(args, 'cluster_method', 'diamond_mcl')
+        clustering_method = getattr(args, 'cluster_method', 'mmseqs2')
         logging.info(f'Running MCL clustering of {joint_fasta_fname} with inflation {mcl_inflation} ...')
         cluster(fasta_file = joint_fasta_fname,out_prefix = temp_dir + '/' + prefix,temp_dir = temp_dir,logfile = cluster_log,ncpu = ncpu,method = clustering_method,mcl_inflation = mcl_inflation,verbose = verbose, logging = logging,per_species_n = getattr(args, 'per_species_n', 6),mmseqs_cov = getattr(args, 'mmseqs_cov', 0.3))
     # Cluster filtering 

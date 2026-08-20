@@ -324,7 +324,7 @@ def blastp(query,target,db,outfile,ncpu=1,evalue = "1e-5",min_perc = None,outfmt
 		subprocess.run(cmd, shell=True, check=True)
 
 
-def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'diamond_mcl',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = True, logging = None,per_species_n = 6,graph_max_target_seqs = None,mmseqs_cov = 0.3):
+def cluster(fasta_file,out_prefix,temp_dir,logfile = '/dev/null',method = 'mmseqs2',ncpu = 1,mcl_inflation = "1.1",cluster_prefix = "HG",verbose = True, logging = None,per_species_n = 6,graph_max_target_seqs = None,mmseqs_cov = 0.3):
 	if method == 'mmseqs2':
 		# ------------------------------------------------------------------------------
 		# Connected-component clustering. --cluster-mode 1 (connected component) is the ONLY
