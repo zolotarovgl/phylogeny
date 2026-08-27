@@ -187,13 +187,24 @@ def diagnose_tree(t):
 
 
 def check_and_fix_tree(input_file, output_file, fail_if_nonbinary=False, format=1):
+	# NOTE on the write format, do not drop it. We READ with format=1, which puts an
+	# IQ-TREE internal label (the UFBoot value) into node.name and leaves node.support at
+	# ete3's default of 1.0. Writing with ete3's DEFAULT format=0 then emits node.support
+	# and discards node.name, so every bootstrap in the starting tree silently became "1":
+	#     Tree("((A:.1,B:.1)100:.2,(C:.1,D:.1)72:.2,E:.3);", format=1).write()
+	#     -> ((A:0.1,B:0.1)1:0.2,(C:0.1,D:0.1)1:0.2,E:0.3);
+	# Writing with format=1 round-trips the labels. This does not change any current
+	# result -- run_generax() does not pass --support-threshold, the only GeneRax option
+	# that reads input support -- but that option is unusable until the values survive.
+	# Nodes invented by resolve_polytomy() below have no name and are written with an
+	# empty label, which is correct: an arbitrarily resolved node has no support.
 	t = Tree(input_file, format=format)
 
 	non_binary_nodes = diagnose_tree(t)
 
 	if not non_binary_nodes:
 		logging.info(f'{input_file}: No polytomies found')
-		t.write(outfile=output_file)
+		t.write(outfile=output_file, format=1)
 		return 0
 
 	
@@ -207,7 +218,7 @@ def check_and_fix_tree(input_file, output_file, fail_if_nonbinary=False, format=
 	if diagnose_tree(t):
 		return 1
 
-	t.write(outfile=output_file)
+	t.write(outfile=output_file, format=1)
 	return 0
 
 if __name__ == "__main__":
