@@ -105,7 +105,7 @@ def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtr
 				fasta_file=fasta_file, output_file=output_file,
 				output_prefix=output_prefix,
 				model = iqtree2_model,
-				cptime = 1000, nstop = 200,nm = 1000, bb = 1000, quiet = '',
+				cptime = None, nstop = 200,nm = 1000, bb = 1000, quiet = '',
 				iqtree2 = 'iqtree2',
 				ntmax=ntmax, logfile=logfile)
 
@@ -121,9 +121,10 @@ def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtr
 		sys.exit(1)
 
 def phylogeny_iqtree2(fasta_file, output_file=None, output_prefix=None,
-					  model='TEST', cptime=1000, nstop=200, nm=1000,
+					  model='TEST', cptime=None, nstop=200, nm=1000,
 					  ntmax=15, bb=1000, quiet="",
-					  iqtree2="iqtree2", logfile='/dev/null', verbose=True):
+					  iqtree2="iqtree2", logfile='/dev/null', verbose=True,
+					  redo=None):
 
 	logging.info(f"Phylogeny iqtree2: {fasta_file} {output_file}")
 
@@ -131,7 +132,32 @@ def phylogeny_iqtree2(fasta_file, output_file=None, output_prefix=None,
 		logging.error('ERROR: specify output prefix!')
 		sys.exit(1)
 
-	cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
+	# --redo makes IQ-TREE IGNORE an existing checkpoint. Verified 2026-08-28: without it
+	# IQ-TREE logs "Checkpoint (x.ckp.gz) indicates that a previous run successfully
+	# finished"; with it, the checkpoint is silently recomputed. So passing it
+	# unconditionally defeats any resume -- including step2.nf's PHY checkpoint stash,
+	# which restores a .ckp.gz into the work dir only for --redo to discard it.
+	#
+	# Default: redo ONLY when there is no checkpoint to resume from. An explicit
+	# redo=True/False still wins, and IQTREE_REDO=1/0 overrides from the environment.
+	ckp = f"{output_prefix}.ckp.gz"
+	if redo is None:
+		env = os.environ.get("IQTREE_REDO")
+		if env is not None:
+			redo = env not in ("0", "false", "False", "")
+		else:
+			redo = not os.path.isfile(ckp)
+	redo_flag = "--redo" if redo else ""
+	if not redo:
+		logging.info(f"resuming from checkpoint {ckp} (--redo withheld)")
+
+	# -cptime is the checkpoint INTERVAL in seconds. The old hard-coded 1000 (~17 min)
+	# meant a task killed before that had nothing to stash, so the resume path could not
+	# fire on exactly the long families it exists for. IQTREE_CPTIME overrides.
+	if cptime is None:
+		cptime = int(os.environ.get("IQTREE_CPTIME", 300))
+
+	cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} {redo_flag} > {logfile} 2>&1"
 	logging.info(cmd)
 
 	ret = subprocess.run(cmd, shell=True).returncode
