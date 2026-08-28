@@ -131,6 +131,7 @@ if __name__ == "__main__":
     parser_possvm.add_argument('--sos', default = 0, help='POSSVM species overlap (--sos) param')
     parser_possvm.add_argument('--min_support_transfer', default = "50",dest = "possvm_minsupport", help='POSSVM Minimum support for label transfer')
     parser_possvm.add_argument('--itermidroot', default = "10", help='Number of rooting iterations')
+    parser_possvm.add_argument('--skiproot', required=False, action='store_true', help='Do NOT root the input tree. Use for GeneRax trees, which the reconciliation already rooted; re-rooting them collapses the orthogroup partition.')
     parser_possvm.add_argument('-l','--logfile', default = "/dev/null", help='the log')
     parser_possvm.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
     parser_possvm.add_argument('-p','--phy', default = "", help='POSSVM: OPTIONAL: String. Prefix for output files. Defaults to `basename` of input phylogeny. Default behaviour will never overwrite original files, because it adds suffixes.')
@@ -506,7 +507,8 @@ if __name__ == "__main__":
             itermidroot = int(args.itermidroot),
             sos = args.sos,
             outgroup = args.outgroup,
-            phy = args.phy)
+            phy = args.phy,
+            skiproot = args.skiproot)
 
     elif args.command == 'easy-phylo':
 

@@ -188,7 +188,8 @@ def possvm(treefile,
 			itermidroot = 10,
 			sos = 0,
 			outgroup = "",
-			phy = ""):
+			phy = "",
+			skiproot = False):
 
 	if logfile:
 		logging.info(f"Possvm: {treefile}\nLog: {logfile}")
@@ -222,7 +223,13 @@ def possvm(treefile,
 	
 	if phy != '':
 		phy =  f'--phy {phy}'
-	cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup}  {phy} >> {logfile} 2>&1"
+	# POSSVM roots the input tree by default (-skiproot is action="store_false", so the
+	# flag TURNS ROOTING OFF). That is right for an unrooted IQ-TREE tree and wrong for a
+	# GeneRax tree, which the reconciliation already rooted: re-rooting it by iterative
+	# midpoint collapsed 38 of 146 TF families to a single orthogroup spanning the whole
+	# tree. Measured on tfs.Forkhead.HG2: 1 group rooted vs 12 with --skiproot.
+	skiproot_flag = "--skiproot" if skiproot else ""
+	cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -skipprint -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup} {skiproot_flag} {phy} >> {logfile} 2>&1"
 	#print(cmd)
 	logging.info(cmd)
 	os.system(f'echo "{cmd}" > {logfile}')    
