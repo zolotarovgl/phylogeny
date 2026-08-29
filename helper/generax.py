@@ -114,10 +114,10 @@ def run_generax(
 	# --use-hwthread-cpus --oversubscribe made MPI pack ranks onto the hyperthreads of a
 	# single physical core, so they contended. Measured 2026-08-29 on tfs.AP-2.HG1 (101
 	# tips), same tree byte-identical in every case:
-	#     --use-hwthread-cpus --oversubscribe -n 2   137 s   <- what this used to do
-	#     --bind-to none -n 2                         79 s
-	#     plain -n 2                                  82 s
-	#     plain -n 1                                  82 s
+	#     --use-hwthread-cpus --oversubscribe -n 2   136 s   <- what this used to do
+	#     --oversubscribe -n 2                        81 s   <- what it does now
+	#     --oversubscribe --bind-to none -n 2         88 s
+	# All three produce a BYTE-IDENTICAL tree (md5 3545e681), so this is pure overhead.
 	# i.e. the flags cost ~1.7x against a single rank and bought nothing. Scaling is flat
 	# from 1 to 4 ranks (84/83/86 s), consistent with GeneRax parallelising ACROSS families
 	# rather than within one -- so ncpu is not a speed knob here, but the flags were a
@@ -128,7 +128,10 @@ def run_generax(
 	# 1.7x is the difference between "cannot finish" and "borderline".
 	#
 	# GENERAX_MPI_OPTS can restore the old flags or set others if a site needs them.
-	mpi_opts = os.environ.get("GENERAX_MPI_OPTS", "--bind-to none").split()
+	# --oversubscribe is KEPT and is load-bearing: Nextflow submits cpus-per-task with a
+	# single task, so OpenMPI sees ONE slot and `mpirun -n 2` fails outright with "There are
+	# not enough slots available" without it. Only --use-hwthread-cpus is removed.
+	mpi_opts = os.environ.get("GENERAX_MPI_OPTS", "--oversubscribe").split()
 	cmd = [
 		"mpirun",
 		*mpi_opts,
