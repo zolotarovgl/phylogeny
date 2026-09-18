@@ -106,6 +106,27 @@ def get_node_support_range(treefile):
 	return(min_support,max_support)
 
 
+def rescale_threshold_if_out_of_range(threshold, node_support_range):
+	# Mirrors the pre-existing min_support_transfer behaviour below: thresholds are
+	# conventionally entered on a 0-100 scale (SH-aLRT/UFBoot), but some tree sources
+	# are natively 0-1 (e.g. FastTree's own local support, or GeneRax's raw
+	# reconciliation placeholder when GXSUP is off/unavailable). If the requested
+	# threshold exceeds the tree's observed max support, assume a 0-1 scale and
+	# rescale rather than silently filtering out every node.
+	if threshold and threshold > node_support_range[1]:
+		return threshold / 100
+	return threshold
+
+
+def is_zero_speciation_events_failure(possvm_output):
+	# POSSVM crashes (KeyError 'in_gene' in ref_known_any, empty events dataframe)
+	# instead of degrading gracefully when -min_support_node leaves zero speciation
+	# events passing the filter -- e.g. a degenerate-support tree (GeneRax's raw
+	# placeholder: a near-constant 0/1) where even the rescaled threshold rejects
+	# everything. POSSVM logs this specific line before it happens.
+	return "no speciation events" in possvm_output.lower()
+
+
 def phylogeny_get_prefix(output_file = None,output_prefix = None,verbose = False):
 	# given on the output file name, get the file prefix - needed for the iqtree!
 	if not output_file and not output_prefix or output_file and output_prefix:
@@ -225,12 +246,14 @@ def phylogeny_fasttree(fasta_file, output_file, logfile=''):
 
 def possvm(treefile,
 			output_prefix = None,
-			reference_names = None, 
-			ogprefix = "OG", 
+			reference_names = None,
+			ogprefix = "OG",
 			possvm = 'submodules/possvm-orthology/possvm.py',
 			logfile = False,
 			refsps = None,
 			min_support_transfer = 50,
+			min_support_node = 0,
+			skiproot = False,
 			itermidroot = 10,
 			sos = 0,
 			outgroup = "",
@@ -240,41 +263,65 @@ def possvm(treefile,
 		logging.info(f"Possvm: {treefile}\nLog: {logfile}")
 	else:
 		logfile = '/dev/null'
-	# Adjust min_support according to the value range in provided tree 
+	# Adjust min_support according to the value range in provided tree
 	if not os.path.isfile(treefile):
 		logging.error(f'ERROR: {treefile} does not exist!')
 		sys.exit(1)
 	nsr = get_node_support_range(treefile)
 	if min_support_transfer:
 		if min_support_transfer > nsr[1]:
-			logging.info(f"Minimum node support ({min_support_transfer}) is bigger than the maximum observed support value ({nsr[1]}); Adjusting the threshold to {round(min_support_transfer/100,2)}") 
+			logging.info(f"Minimum node support ({min_support_transfer}) is bigger than the maximum observed support value ({nsr[1]}); Adjusting the threshold to {round(min_support_transfer/100,2)}")
 			min_support_transfer = min_support_transfer / 100
-	# get the location of the possvm submodule 
+	if min_support_node:
+		rescaled = rescale_threshold_if_out_of_range(min_support_node, nsr)
+		if rescaled != min_support_node:
+			logging.info(f"min_support_node ({min_support_node}) is bigger than the maximum observed support value ({nsr[1]}); Adjusting the threshold to {round(rescaled,2)}")
+			min_support_node = rescaled
+	# get the location of the possvm submodule
 	scriptdir = os.path.dirname(os.path.abspath(__file__))
 	possvm = scriptdir + '/../' + possvm
-	
+
 	if reference_names:
 		reference_names = f"-r {reference_names}"
 	else:
 		reference_names = ""
-	
+
 	if refsps:
-		reference_species = f"-refsps {refsps}" 
+		reference_species = f"-refsps {refsps}"
 	else:
 		reference_species = ""
-	
+
 	if outgroup != '':
 		outgroup  = f'--outgroup {outgroup}'
-	
+
 	if phy != '':
 		phy =  f'--phy {phy}'
+	skiproot = "-skiproot" if skiproot else ""
+
 	# NOTE: -skipprint is intentionally NOT passed here -- POSSVM prints the annotated
 	# phylogeny as a PDF by default, and the pipeline should always produce that visualization.
-	cmd = f"python {possvm} --sos {sos} -ogprefix {ogprefix} -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer}  -i {treefile} {reference_names} {reference_species} {outgroup}  {phy} >> {logfile} 2>&1"
-	#print(cmd)
+	def build_cmd(node_threshold):
+		return f"python {possvm} --sos {sos} -ogprefix {ogprefix} -method lpa -itermidroot {itermidroot} -min_support_transfer {min_support_transfer} -min_support_node {node_threshold} {skiproot} -i {treefile} {reference_names} {reference_species} {outgroup}  {phy}"
+
+	cmd = build_cmd(min_support_node)
 	logging.info(cmd)
-	os.system(f'echo "{cmd}" > {logfile}')    
-	subprocess.run(cmd, shell=True, check=True)
+	result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+	possvm_output = (result.stdout or "") + (result.stderr or "")
+
+	if result.returncode != 0 and min_support_node and is_zero_speciation_events_failure(possvm_output):
+		logging.warning(f"min_support_node={min_support_node} left zero speciation events passing the filter on this tree "
+			f"(POSSVM crashes on this rather than degrading gracefully). Retrying with min_support_node=0.")
+		cmd = build_cmd(0)
+		logging.info(cmd)
+		retry = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+		possvm_output += "\n--- retry with min_support_node=0 ---\n" + (retry.stdout or "") + (retry.stderr or "")
+		result = retry
+
+	with open(logfile, 'w') as f:
+		f.write(possvm_output)
+
+	if result.returncode != 0:
+		raise subprocess.CalledProcessError(result.returncode, cmd, output=possvm_output)
 
 # Phylo-search functions 
 

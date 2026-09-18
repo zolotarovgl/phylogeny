@@ -130,10 +130,12 @@ if __name__ == "__main__":
     parser_possvm.add_argument('-s','--refsps', default = None, help='POSSVM reference species')
     parser_possvm.add_argument('--sos', default = 0, help='POSSVM species overlap (--sos) param')
     parser_possvm.add_argument('--min_support_transfer', default = "50",dest = "possvm_minsupport", help='POSSVM Minimum support for label transfer')
+    parser_possvm.add_argument('--min_support_node', default = "0", help='POSSVM: Float. Min node support to consider orthology relationships before clustering. Default 0 (no filtering), matching POSSVM\'s own default. On a tree with degenerate/placeholder support (e.g. GeneRax output without GXSUP), a nonzero value is automatically clamped back to 0 with a warning, rather than crashing POSSVM.')
     parser_possvm.add_argument('--itermidroot', default = "10", help='Number of rooting iterations')
     parser_possvm.add_argument('-l','--logfile', default = "/dev/null", help='the log')
     parser_possvm.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
     parser_possvm.add_argument('-p','--phy', default = "", help='POSSVM: OPTIONAL: String. Prefix for output files. Defaults to `basename` of input phylogeny. Default behaviour will never overwrite original files, because it adds suffixes.')
+    parser_possvm.add_argument('-skiproot','--skiproot', action='store_true', help='POSSVM: turn off tree rooting (use when the input tree is already rooted, e.g. a GeneRax-reconciled tree).')
     
     # EASY-PHYLO
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')
@@ -147,6 +149,7 @@ if __name__ == "__main__":
     parser_easyphylo.add_argument('--force', required=False, default = False, action = 'store_true', help='Use this to rerun intermediate files (e.g. alignment)')
     parser_easyphylo.add_argument('--method', default = "iqtree3", help='Phylogeny method: fasttree, iqtree2, iqtree3. Default: iqtree3')
     parser_easyphylo.add_argument('--min_support_transfer', default = "50", dest = "easyphylo_minsupport", help='POSSVM Minimum support for label transfer')
+    parser_easyphylo.add_argument('--min_support_node', default = "0", help='POSSVM: Float. Min node support to consider orthology relationships before clustering. Default 0 (no filtering). Auto-clamped to 0 with a warning on degenerate/placeholder-support trees.')
     parser_easyphylo.add_argument('--mafft', required=False, default ="auto", help='Mafft alignment options. Default: auto - picks based on the number of sequences.\nAvailable options: auto, fast, linsi,einsi,ginsi')
     parser_easyphylo.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
     parser_easyphylo.add_argument('--phy', default = "", help='POSSVM: output prefix (passed through to possvm).')
@@ -185,6 +188,8 @@ if __name__ == "__main__":
     parser_blastology.add_argument('--mmseqs_cov', required=False, default = 0.3, help='Coverage threshold for --cluster_method mmseqs2. Default [0.3]')
     parser_blastology.add_argument('--per_species_n', required=False, default = 6, help='All-vs-all graph: keep the N best hits PER SPECIES (Broccoli-style, Derelle 2020). 0/None restores the old global cap, which fragments families along lineage lines. Default [6]')
     parser_blastology.add_argument('--max_target_seqs', required=False, default = 5000, help='BLASTP -max_target_seqs, i.e. subjects reported PER QUERY. BLAST\'s own default is 500, which silently truncates recruitment on large targets and drops divergent homologs (see Issues.md I36). Default [5000]')
+    parser_blastology.add_argument('--min_support_transfer', required=False, default = "50", help='POSSVM Minimum support for label transfer. Default "50"')
+    parser_blastology.add_argument('--min_support_node', required=False, default = "0", help='POSSVM: Float. Min node support to consider orthology relationships before clustering. Default 0 (no filtering). Auto-clamped to 0 with a warning on degenerate/placeholder-support trees.')
 
     args = parser.parse_args()
 
@@ -499,15 +504,18 @@ if __name__ == "__main__":
 
     elif args.command == 'possvm':
         min_support_transfer = float(args.possvm_minsupport)
+        min_support_node = float(args.min_support_node)
         #if not os.path.exists('submodules/possvm-orthology/possvm.py'):
         #    logging.error("Can't find submodules/possvm-orthology/possvm.py! Exiting ...")
         print(args)
         possvm(
-            treefile  = args.treefile,   
+            treefile  = args.treefile,
             reference_names = args.refnames,
             ogprefix = args.ogprefix,
             refsps = args.refsps,
             min_support_transfer = min_support_transfer,
+            min_support_node = min_support_node,
+            skiproot = args.skiproot,
             logfile = args.logfile,
             itermidroot = int(args.itermidroot),
             sos = args.sos,
@@ -556,14 +564,16 @@ if __name__ == "__main__":
         else:
             phylogeny(fasta_file = fname_aln, output_file = fname_tree,output_prefix = tree_prefix,ntmax = args.ncpu, method = method, logfile = log_phy)
         min_support_transfer = float(args.easyphylo_minsupport)
-        
+        min_support_node = float(args.min_support_node)
+
         if args.refnames:
-            
+
             possvm(
                     treefile = fname_tree,
                     reference_names = args.refnames,
                     ogprefix = args.ogprefix,
-                    min_support_transfer = min_support_transfer, 
+                    min_support_transfer = min_support_transfer,
+                    min_support_node = min_support_node,
                     logfile = log_possvm,
                     sos = float(args.sos),
                     outgroup = args.outgroup,

@@ -149,7 +149,7 @@ def get_results(cluster_directory,prefix,query_ids,soi = None,output_file = None
         logging.info(cmd)
     subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
 
-def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefix = None,mafft_opt = None,phy_method = 'fasttree',force = True,ncpu = 1,verbose = False):
+def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefix = None,mafft_opt = None,phy_method = 'fasttree',force = True,ncpu = 1,verbose = False,min_support_transfer = 50,min_support_node = 0):
         input_file = os.path.join(cluster_directory,cl_id)
         cluster_fasta = os.path.join(cluster_directory,cl_id +  ".fasta")
 
@@ -174,7 +174,7 @@ def run_cluster(cl_id = None,cluster_directory = None,refnames_file = None,prefi
             logging.info(f'Found POSSVM file: {fname_tree}! Skipping')
         else:
             og_pref = f'{prefix}.OG' if prefix else 'OG'
-            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = og_pref,min_support_transfer = 50)
+            possvm(treefile = fname_tree,reference_names = refnames_file,ogprefix = og_pref,min_support_transfer = min_support_transfer,min_support_node = min_support_node)
             logging.info(f'Created {fname_possvm}')
 
 def blastology_run(args,logging,verbose = False):
@@ -227,8 +227,10 @@ def blastology_run(args,logging,verbose = False):
     # Now, for each cluster, run the easy-phylo
     logging.info(f'{len(cluster_prefs)} sequence clusters to process: {",".join(cluster_prefs)}')
     
+    min_support_transfer = float(args.min_support_transfer)
+    min_support_node = float(args.min_support_node)
     for cl_id in cluster_prefs:
-        run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,prefix = prefix,mafft_opt=mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose)
+        run_cluster(cl_id = cl_id,cluster_directory=cluster_directory,refnames_file=refnames_file,prefix = prefix,mafft_opt=mafft,phy_method=phy_method,force=force,ncpu=ncpu,verbose=verbose,min_support_transfer=min_support_transfer,min_support_node=min_support_node)
 
     # Finally, retrieve the true orthologs!
     #if not args.outputfile:
