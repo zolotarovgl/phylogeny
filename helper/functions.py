@@ -189,7 +189,7 @@ def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtr
 
 def phylogeny_iqtree2(fasta_file, output_file=None, output_prefix=None,
 					  model='TEST', cptime=1000, nstop=200, nm=1000,
-					  ntmax=15, bb=1000, quiet="",
+					  ntmax=15, bb=1000, quiet="", seed=1,
 					  iqtree2="iqtree2", logfile='/dev/null', verbose=True):
 
 	logging.info(f"Phylogeny iqtree2: {fasta_file} {output_file}")
@@ -198,7 +198,13 @@ def phylogeny_iqtree2(fasta_file, output_file=None, output_prefix=None,
 		logging.error('ERROR: specify output prefix!')
 		sys.exit(1)
 
-	cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {quiet} --redo > {logfile} 2>&1"
+	# seed=1 (Grygoriy, 2026-09-20): was unset entirely, i.e. IQ-TREE picked its own
+	# from the clock -- every rerun of the identical command gave a DIFFERENT
+	# stochastic tree search on weak-signal alignments (measured: GATA HG1 gave a
+	# monophyletic ctenophore clade at 99 support on one run, a non-monophyletic one
+	# on the next, same inputs). Pass seed=None to restore the old unpinned behaviour.
+	seed_flag = f"-seed {seed} " if seed is not None else ""
+	cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {seed_flag}{quiet} --redo > {logfile} 2>&1"
 	logging.info(cmd)
 
 	ret = subprocess.run(cmd, shell=True).returncode
