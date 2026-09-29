@@ -1,3 +1,4 @@
 [submodule "submodules/possvm-orthology"]
 	path = submodules/possvm-orthology
-	url = https://github.com/xgrau/possvm-orthology.git
+	url = https://github.com/zolotarovgl/possvm-orthology.git
+	branch = fix/root-mrca-indexerror
