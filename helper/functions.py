@@ -172,7 +172,7 @@ def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtr
 				fasta_file=fasta_file, output_file=output_file,
 				output_prefix=output_prefix,
 				model = iqtree2_model,
-				cptime = 1000, nstop = 200,nm = 1000, bb = 1000, quiet = '',
+				cptime = None, nstop = 200,nm = 1000, bb = 1000, quiet = '',
 				iqtree2 = 'iqtree2',
 				ntmax=ntmax, logfile=logfile)
 
@@ -188,9 +188,10 @@ def phylogeny(fasta_file, output_file, output_prefix=None, ntmax=1, method='iqtr
 		sys.exit(1)
 
 def phylogeny_iqtree2(fasta_file, output_file=None, output_prefix=None,
-					  model='TEST', cptime=1000, nstop=200, nm=1000,
+					  model='TEST', cptime=None, nstop=200, nm=1000,
 					  ntmax=15, bb=1000, quiet="", seed=1,
-					  iqtree2="iqtree2", logfile='/dev/null', verbose=True):
+					  iqtree2="iqtree2", logfile='/dev/null', verbose=True,
+					  redo=None):
 
 	logging.info(f"Phylogeny iqtree2: {fasta_file} {output_file}")
 
@@ -204,7 +205,32 @@ def phylogeny_iqtree2(fasta_file, output_file=None, output_prefix=None,
 	# monophyletic ctenophore clade at 99 support on one run, a non-monophyletic one
 	# on the next, same inputs). Pass seed=None to restore the old unpinned behaviour.
 	seed_flag = f"-seed {seed} " if seed is not None else ""
-	cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {seed_flag}{quiet} --redo > {logfile} 2>&1"
+	# --redo makes IQ-TREE IGNORE an existing checkpoint. Verified 2026-08-28: without it
+	# IQ-TREE logs "Checkpoint (x.ckp.gz) indicates that a previous run successfully
+	# finished"; with it, the checkpoint is silently recomputed. So passing it
+	# unconditionally defeats any resume -- including step2.nf's PHY checkpoint stash,
+	# which restores a .ckp.gz into the work dir only for --redo to discard it.
+	#
+	# Default: redo ONLY when there is no checkpoint to resume from. An explicit
+	# redo=True/False still wins, and IQTREE_REDO=1/0 overrides from the environment.
+	ckp = f"{output_prefix}.ckp.gz"
+	if redo is None:
+		env = os.environ.get("IQTREE_REDO")
+		if env is not None:
+			redo = env not in ("0", "false", "False", "")
+		else:
+			redo = not os.path.isfile(ckp)
+	redo_flag = "--redo" if redo else ""
+	if not redo:
+		logging.info(f"resuming from checkpoint {ckp} (--redo withheld)")
+
+	# -cptime is the checkpoint INTERVAL in seconds. The old hard-coded 1000 (~17 min)
+	# meant a task killed before that had nothing to stash, so the resume path could not
+	# fire on exactly the long families it exists for. IQTREE_CPTIME overrides.
+	if cptime is None:
+		cptime = int(os.environ.get("IQTREE_CPTIME", 300))
+
+	cmd = f"{iqtree2} -pre {output_prefix} -s {fasta_file} -m {model} -mset LG,WAG,JTT -nt AUTO -ntmax {ntmax} -bb {bb} -nm {nm} -nstop {nstop} -cptime {cptime} {seed_flag}{quiet} {redo_flag} > {logfile} 2>&1"
 	logging.info(cmd)
 
 	ret = subprocess.run(cmd, shell=True).returncode
@@ -302,6 +328,11 @@ def possvm(treefile,
 
 	if phy != '':
 		phy =  f'--phy {phy}'
+	# POSSVM roots the input tree by default (-skiproot is action="store_false", so the
+	# flag TURNS ROOTING OFF). That is right for an unrooted IQ-TREE tree and wrong for a
+	# GeneRax tree, which the reconciliation already rooted: re-rooting it by iterative
+	# midpoint collapsed 38 of 146 TF families to a single orthogroup spanning the whole
+	# tree. Measured on tfs.Forkhead.HG2: 1 group rooted vs 12 with --skiproot.
 	skiproot = "-skiproot" if skiproot else ""
 
 	# NOTE: -skipprint is intentionally NOT passed here -- POSSVM prints the annotated

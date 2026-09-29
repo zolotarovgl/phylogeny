@@ -132,10 +132,10 @@ if __name__ == "__main__":
     parser_possvm.add_argument('--min_support_transfer', default = "50",dest = "possvm_minsupport", help='POSSVM Minimum support for label transfer')
     parser_possvm.add_argument('--min_support_node', default = "0", help='POSSVM: Float. Min node support to consider orthology relationships before clustering. Default 0 (no filtering), matching POSSVM\'s own default. On a tree with degenerate/placeholder support (e.g. GeneRax output without GXSUP), a nonzero value is automatically clamped back to 0 with a warning, rather than crashing POSSVM.')
     parser_possvm.add_argument('--itermidroot', default = "10", help='Number of rooting iterations')
+    parser_possvm.add_argument('--skiproot', required=False, action='store_true', help='Do NOT root the input tree. Use for GeneRax trees, which the reconciliation already rooted; re-rooting them collapses the orthogroup partition.')
     parser_possvm.add_argument('-l','--logfile', default = "/dev/null", help='the log')
     parser_possvm.add_argument('--outgroup', default = "", help='POSSVM: outgroup species file.')
     parser_possvm.add_argument('-p','--phy', default = "", help='POSSVM: OPTIONAL: String. Prefix for output files. Defaults to `basename` of input phylogeny. Default behaviour will never overwrite original files, because it adds suffixes.')
-    parser_possvm.add_argument('-skiproot','--skiproot', action='store_true', help='POSSVM: turn off tree rooting (use when the input tree is already rooted, e.g. a GeneRax-reconciled tree).')
     
     # EASY-PHYLO
     parser_easyphylo = subparsers.add_parser('easy-phylo',help = 'Build a phylogeny from a single fasta')

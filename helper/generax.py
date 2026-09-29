@@ -111,10 +111,30 @@ def run_generax(
 	check_binary('generax', logging=logging)
 	check_binary('mpirun', logging=logging)
 
+	# --use-hwthread-cpus --oversubscribe made MPI pack ranks onto the hyperthreads of a
+	# single physical core, so they contended. Measured 2026-08-29 on tfs.AP-2.HG1 (101
+	# tips), same tree byte-identical in every case:
+	#     --use-hwthread-cpus --oversubscribe -n 2   136 s   <- what this used to do
+	#     --oversubscribe -n 2                        81 s   <- what it does now
+	#     --oversubscribe --bind-to none -n 2         88 s
+	# All three produce a BYTE-IDENTICAL tree (md5 3545e681), so this is pure overhead.
+	# i.e. the flags cost ~1.7x against a single rank and bought nothing. Scaling is flat
+	# from 1 to 4 ranks (84/83/86 s), consistent with GeneRax parallelising ACROSS families
+	# rather than within one -- so ncpu is not a speed knob here, but the flags were a
+	# straight loss.
+	#
+	# Why it matters: GeneRax runtime scales ~ tips^2 (424 tips 1.9 h, 516 2.9 h, 559 4.1 h,
+	# 787 7.8 h), which puts tfs.Homeodomains.HG1 (1781 tips) near 40 h against a 24 h cap.
+	# 1.7x is the difference between "cannot finish" and "borderline".
+	#
+	# GENERAX_MPI_OPTS can restore the old flags or set others if a site needs them.
+	# --oversubscribe is KEPT and is load-bearing: Nextflow submits cpus-per-task with a
+	# single task, so OpenMPI sees ONE slot and `mpirun -n 2` fails outright with "There are
+	# not enough slots available" without it. Only --use-hwthread-cpus is removed.
+	mpi_opts = os.environ.get("GENERAX_MPI_OPTS", "--oversubscribe").split()
 	cmd = [
 		"mpirun",
-		"--use-hwthread-cpus",
-		"--oversubscribe",
+		*mpi_opts,
 		"-n", str(ncpu),
 		"generax",
 		"-s", species_tree,
@@ -187,13 +207,24 @@ def diagnose_tree(t):
 
 
 def check_and_fix_tree(input_file, output_file, fail_if_nonbinary=False, format=1):
+	# NOTE on the write format, do not drop it. We READ with format=1, which puts an
+	# IQ-TREE internal label (the UFBoot value) into node.name and leaves node.support at
+	# ete3's default of 1.0. Writing with ete3's DEFAULT format=0 then emits node.support
+	# and discards node.name, so every bootstrap in the starting tree silently became "1":
+	#     Tree("((A:.1,B:.1)100:.2,(C:.1,D:.1)72:.2,E:.3);", format=1).write()
+	#     -> ((A:0.1,B:0.1)1:0.2,(C:0.1,D:0.1)1:0.2,E:0.3);
+	# Writing with format=1 round-trips the labels. This does not change any current
+	# result -- run_generax() does not pass --support-threshold, the only GeneRax option
+	# that reads input support -- but that option is unusable until the values survive.
+	# Nodes invented by resolve_polytomy() below have no name and are written with an
+	# empty label, which is correct: an arbitrarily resolved node has no support.
 	t = Tree(input_file, format=format)
 
 	non_binary_nodes = diagnose_tree(t)
 
 	if not non_binary_nodes:
 		logging.info(f'{input_file}: No polytomies found')
-		t.write(outfile=output_file)
+		t.write(outfile=output_file, format=1)
 		return 0
 
 	
@@ -207,7 +238,7 @@ def check_and_fix_tree(input_file, output_file, fail_if_nonbinary=False, format=
 	if diagnose_tree(t):
 		return 1
 
-	t.write(outfile=output_file)
+	t.write(outfile=output_file, format=1)
 	return 0
 
 if __name__ == "__main__":
